@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600;700&family=Open+Sans:wght@400;500;600;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --rose-dark:    #1a4f9c;
+  --rose-deep:    #2f6dc2;
+  --rose-mid:     #4f8de0;
+  --rose-light:   #8fc0ff;
+  --rose-pale:    #f2f8ff;
+  --rose-blush:   #d8e9ff;
+  --bg:           #eef5ff;
+  --surface:      #ffffff;
+  --border:       #c7dbf7;
+  --text:         #12325f;
+  --text-muted:   #5376a8;
+  --theme-w:      320px;
+
+  font-family: 'Open Sans', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--bg);
+}
+
+body { min-height: 100vh; }
+a { color: inherit; text-decoration: none; }
+a:hover { text-decoration: underline; }
