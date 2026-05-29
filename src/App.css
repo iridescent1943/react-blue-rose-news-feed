@@ -8,6 +8,8 @@
   position: relative;
   --theme-header-bg: linear-gradient(90deg, #5a8fd1 0%, #76a9e4 58%, #8ab7ea 100%);
   --theme-header-border: #87b0e0;
+  --settings-toggle-hover-bg: #2f6dc2;
+  --settings-toggle-hover-border: #8fc0ff;
   --rose-bg-color: var(--theme-main-bg);
   --theme-main-bg: linear-gradient(180deg, #edf4fd 0%, #e7f0fb 100%);
   --content-panel-bg: rgba(255, 255, 255, 0.78);
@@ -146,8 +148,8 @@
 }
 
 .rose-svg {
-  width: 200px;
-  height: 250px;
+  width: 240px;
+  height: 300px;
   display: block;
   -webkit-mask-image: url('/rose.svg');
   mask-image: url('/rose.svg');
@@ -271,8 +273,10 @@
 }
 
 .app.theme-0 {
-  --theme-header-bg: linear-gradient(90deg, #c0392b 0%, #e05050 58%, #ff6b6b 100%);
-  --theme-header-border: #e05050;
+  --theme-header-bg: linear-gradient(90deg, #c94a42 0%, #dd635b 58%, #f27d73 100%);
+  --theme-header-border: #dd635b;
+  --settings-toggle-hover-bg: #c0392b;
+  --settings-toggle-hover-border: #f27d73;
   --theme-main-bg: linear-gradient(135deg, #ff6b6b 0%, #c0392b 100%);
   --theme-left-panel-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.86) 0%, rgba(238, 247, 255, 0.78) 100%);
   --theme-preview-panel-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(242, 249, 255, 0.8) 100%);
@@ -281,8 +285,10 @@
 }
 
 .app.theme-1 {
-  --theme-header-bg: linear-gradient(90deg, #e91e8c 0%, #f060a8 58%, #ffb3c6 100%);
-  --theme-header-border: #f060a8;
+  --theme-header-bg: linear-gradient(90deg, #d94a96 0%, #e46aae 58%, #ef89c4 100%);
+  --theme-header-border: #e46aae;
+  --settings-toggle-hover-bg: #e91e8c;
+  --settings-toggle-hover-border: #ef89c4;
   --theme-main-bg: linear-gradient(135deg, #ffb3c6 0%, #e91e8c 100%);
   --theme-left-panel-bg: linear-gradient(180deg, rgba(248, 252, 255, 0.86) 0%, rgba(230, 243, 255, 0.78) 100%);
   --theme-preview-panel-bg: linear-gradient(180deg, rgba(250, 253, 255, 0.9) 0%, rgba(236, 246, 255, 0.82) 100%);
@@ -291,8 +297,10 @@
 }
 
 .app.theme-2 {
-  --theme-header-bg: linear-gradient(90deg, #f07020 0%, #f09040 58%, #ffd580 100%);
-  --theme-header-border: #f09040;
+  --theme-header-bg: linear-gradient(90deg, #d9823f 0%, #e89e59 58%, #f6ba77 100%);
+  --theme-header-border: #e89e59;
+  --settings-toggle-hover-bg: #f07020;
+  --settings-toggle-hover-border: #f6ba77;
   --theme-main-bg: linear-gradient(135deg, #ffd580 0%, #f07020 100%);
   --theme-left-panel-bg: linear-gradient(180deg, rgba(242, 249, 255, 0.85) 0%, rgba(222, 238, 255, 0.76) 100%);
   --theme-preview-panel-bg: linear-gradient(180deg, rgba(245, 251, 255, 0.88) 0%, rgba(228, 241, 255, 0.8) 100%);
@@ -301,8 +309,10 @@
 }
 
 .app.theme-3 {
-  --theme-header-bg: linear-gradient(90deg, #27ae60 0%, #40c878 58%, #a8f0a8 100%);
-  --theme-header-border: #40c878;
+  --theme-header-bg: linear-gradient(90deg, #3ea866 0%, #57be7e 58%, #70d496 100%);
+  --theme-header-border: #57be7e;
+  --settings-toggle-hover-bg: #27ae60;
+  --settings-toggle-hover-border: #70d496;
   --theme-main-bg: linear-gradient(135deg, #a8f0a8 0%, #27ae60 100%);
   --theme-left-panel-bg: linear-gradient(180deg, rgba(236, 246, 255, 0.83) 0%, rgba(214, 233, 252, 0.74) 100%);
   --theme-preview-panel-bg: linear-gradient(180deg, rgba(240, 249, 255, 0.86) 0%, rgba(220, 236, 252, 0.78) 100%);
@@ -311,8 +321,10 @@
 }
 
 .app.theme-4 {
-  --theme-header-bg: linear-gradient(90deg, #1565c0 0%, #2980d8 58%, #a0c8ff 100%);
-  --theme-header-border: #2980d8;
+  --theme-header-bg: linear-gradient(90deg, #3f7fce 0%, #5a96dd 58%, #74adeb 100%);
+  --theme-header-border: #5a96dd;
+  --settings-toggle-hover-bg: #1565c0;
+  --settings-toggle-hover-border: #74adeb;
   --theme-main-bg: linear-gradient(135deg, #a0c8ff 0%, #1565c0 100%);
   --theme-left-panel-bg: linear-gradient(180deg, rgba(228, 241, 255, 0.8) 0%, rgba(204, 224, 245, 0.72) 100%);
   --theme-preview-panel-bg: linear-gradient(180deg, rgba(234, 246, 255, 0.84) 0%, rgba(212, 229, 247, 0.76) 100%);
@@ -321,8 +333,10 @@
 }
 
 .app.theme-5 {
-  --theme-header-bg: linear-gradient(90deg, #6a1b9a 0%, #8e35b8 58%, #c9a0f8 100%);
-  --theme-header-border: #8e35b8;
+  --theme-header-bg: linear-gradient(90deg, #7d4eb2 0%, #9466c3 58%, #ab7fd2 100%);
+  --theme-header-border: #9466c3;
+  --settings-toggle-hover-bg: #6a1b9a;
+  --settings-toggle-hover-border: #ab7fd2;
   --theme-main-bg: linear-gradient(135deg, #c9a0f8 0%, #6a1b9a 100%);
   --theme-left-panel-bg: linear-gradient(180deg, rgba(219, 236, 252, 0.76) 0%, rgba(192, 214, 238, 0.68) 100%);
   --theme-preview-panel-bg: linear-gradient(180deg, rgba(226, 241, 255, 0.8) 0%, rgba(198, 219, 240, 0.72) 100%);
@@ -734,20 +748,22 @@
   align-items: center;
   justify-content: center;
   background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(106,170,240,0.35);
+  border: 1px solid rgba(143,192,255,0.45);
   color: var(--rose-pale);
   width: 36px;
   height: 36px;
   padding: 0;
   border-radius: 50%;
   cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
   transition: background 0.15s, border-color 0.15s;
   font-family: inherit;
   flex-shrink: 0;
 }
 .settings-toggle:hover, .settings-toggle.open {
-  background: rgba(106,170,240,0.18);
-  border-color: var(--rose-light);
+  background: var(--settings-toggle-hover-bg);
+  border-color: var(--settings-toggle-hover-border);
 }
 
 /* ── Settings panel (modal popup) ── */
@@ -891,13 +907,13 @@
 
 .btn-add {
   padding: 8px 14px;
-  background: var(--rose-deep);
-  color: var(--rose-pale);
-  border: none; border-radius: 6px;
+  background: var(--rose-pale);
+  color: var(--rose-mid);
+  border: 1px solid var(--rose-mid); border-radius: 6px;
   font-size: 0.85rem; cursor: pointer; font-weight: 600;
-  font-family: inherit; transition: background 0.15s;
+  font-family: inherit; transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
-.btn-add:hover { background: var(--rose-mid); }
+.btn-add:hover { background: var(--rose-blush); border-color: var(--rose-deep); color: var(--rose-deep); }
 
 /* ── Responsive ── */
 @media (max-width: 700px) {

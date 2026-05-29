@@ -25,7 +25,7 @@ export default function App() {
   const [leftPanelWidth, setLeftPanelWidth] = useState<number>(() => {
     const saved = localStorage.getItem('news-left-panel-width');
     const parsed = saved ? Number(saved) : NaN;
-    return Number.isFinite(parsed) && parsed >= 240 && parsed <= 460 ? parsed : 320;
+    return Number.isFinite(parsed) && parsed >= 240 && parsed <= 420 ? parsed : 320;
   });
   const [paletteIndex, setPaletteIndex] = useState<number>(() => {
     const saved = localStorage.getItem('news-theme-palette-index');
@@ -91,7 +91,7 @@ export default function App() {
       if (draggingLeftRef.current && appBodyRef.current) {
         const rect = appBodyRef.current.getBoundingClientRect();
         const rawWidth = e.clientX - rect.left;
-        const clamped = Math.max(240, Math.min(460, rawWidth));
+        const clamped = Math.max(240, Math.min(420, rawWidth));
         setLeftPanelWidth(clamped);
         localStorage.setItem('news-left-panel-width', String(clamped));
       }
