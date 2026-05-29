@@ -30,7 +30,7 @@ export default function App() {
   const [paletteIndex, setPaletteIndex] = useState<number>(() => {
     const saved = localStorage.getItem('news-theme-palette-index');
     const parsed = saved ? Number(saved) : NaN;
-    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 5 ? parsed : 0;
+    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 5 ? parsed : 4;
   });
   const contentLayoutRef = useRef<HTMLDivElement | null>(null);
   const appBodyRef = useRef<HTMLDivElement | null>(null);

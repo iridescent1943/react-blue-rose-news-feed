@@ -126,7 +126,7 @@ function TemplateArticles({ onSelectTemplate }: { onSelectTemplate: (article: Ar
   return (
     <section className="template-wrap" aria-label="Template articles">
       <div className="template-header">
-        <h3>Template Articles</h3>
+        <h3>Latest News</h3>
         <span>Preview content while feeds are empty</span>
       </div>
       <div className="template-list">

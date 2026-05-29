@@ -8,12 +8,15 @@
   position: relative;
   --theme-header-bg: linear-gradient(90deg, #5a8fd1 0%, #76a9e4 58%, #8ab7ea 100%);
   --theme-header-border: #87b0e0;
+  --rose-bg-color: var(--theme-main-bg);
   --theme-main-bg: linear-gradient(180deg, #edf4fd 0%, #e7f0fb 100%);
   --content-panel-bg: rgba(255, 255, 255, 0.78);
   --theme-left-panel-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.86) 0%, rgba(238, 247, 255, 0.78) 100%);
   --theme-preview-panel-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(242, 249, 255, 0.8) 100%);
   --theme-ambient-a: radial-gradient(circle at 35% 35%, rgba(143, 192, 255, 0.5), rgba(143, 192, 255, 0));
   --theme-ambient-b: radial-gradient(circle at 60% 45%, rgba(216, 233, 255, 0.65), rgba(216, 233, 255, 0));
+  background: var(--theme-main-bg);
+  transition: background 220ms ease;
 }
 
 .app::before,
@@ -90,6 +93,8 @@
   justify-content: center;
   user-select: none;
   overflow: hidden;
+  background: #ffffff;
+  margin: 0;
 }
 
 .side-divider::before {
@@ -104,11 +109,11 @@
 .theme-panel {
   width: var(--theme-w);
   flex-shrink: 0;
-  background: var(--content-panel-bg);
+  background: var(--rose-bg-color);
   color: var(--text);
   overflow-y: auto;
   overflow-x: hidden;
-  border-right: 1px solid #cfe0f4;
+  border-right: none;
   border-left: 1px solid #cfe0f4;
   border-top: 1px solid #cfe0f4;
   border-bottom: 1px solid #cfe0f4;
@@ -141,25 +146,32 @@
 }
 
 .rose-svg {
-  width: 120px;
-  height: 150px;
+  width: 200px;
+  height: 250px;
   display: block;
-  object-fit: cover;
-  border-radius: 0;
-  background: transparent;
-  filter: drop-shadow(0 4px 12px rgba(106,170,240,0.35));
-  -webkit-mask-image: radial-gradient(ellipse 66% 72% at 50% 48%, #000 58%, rgba(0, 0, 0, 0.86) 74%, transparent 100%);
-  mask-image: radial-gradient(ellipse 66% 72% at 50% 48%, #000 58%, rgba(0, 0, 0, 0.86) 74%, transparent 100%);
-}
-.rose-svg {
-  animation: floatRose 6s ease-in-out infinite;
+  -webkit-mask-image: url('/rose.svg');
+  mask-image: url('/rose.svg');
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  transition: background 220ms ease;
 }
 
 .theme-title {
-  font-size: 1.42rem;
+  font-size: 0.94rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--rose-deep);
+}
+.palette-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+  margin-top: -10px;
 }
 .theme-subtitle {
   font-size: 0.8rem;
@@ -216,14 +228,21 @@
   margin-top: 6px;
 }
 .swatch {
-  width: 20px;
-  height: 20px;
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.15);
+  border: none;
   display: block;
   cursor: pointer;
   padding: 0;
   outline: none;
+  position: relative;
+  overflow: hidden;
+  background-size: 140% 140%;
+  background-position: center;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  -webkit-mask-image: radial-gradient(circle at center, #000 72%, rgba(0, 0, 0, 0.96) 84%, rgba(0, 0, 0, 0.86) 92%, transparent 100%);
+  mask-image: radial-gradient(circle at center, #000 72%, rgba(0, 0, 0, 0.96) 84%, rgba(0, 0, 0, 0.86) 92%, transparent 100%);
   transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 
@@ -232,8 +251,13 @@
 }
 
 .swatch.active {
-  box-shadow: 0 0 0 2px rgba(90, 143, 209, 0.55), 0 0 0 4px rgba(255, 255, 255, 0.8);
-  transform: translateY(-1px) scale(1.04);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.95),
+    0 0 8px rgba(var(--swatch-glow-rgb, 120, 180, 255), 0.45),
+    0 0 16px rgba(var(--swatch-glow-rgb, 120, 180, 255), 0.28),
+    inset 0 0 6px rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px) scale(1.34);
+  z-index: 1;
 }
 
 /* ── Main content (center) ── */
@@ -241,15 +265,15 @@
   flex: 1;
   overflow: hidden;
   padding: 24px 20px;
-  background: var(--theme-main-bg);
+  background: var(--rose-bg-color);
   display: flex;
   min-height: 0;
 }
 
 .app.theme-0 {
-  --theme-header-bg: linear-gradient(90deg, #5a8fd1 0%, #76a9e4 58%, #8ab7ea 100%);
-  --theme-header-border: #87b0e0;
-  --theme-main-bg: linear-gradient(180deg, #edf4fd 0%, #e7f0fb 100%);
+  --theme-header-bg: linear-gradient(90deg, #c0392b 0%, #e05050 58%, #ff6b6b 100%);
+  --theme-header-border: #e05050;
+  --theme-main-bg: linear-gradient(135deg, #ff6b6b 0%, #c0392b 100%);
   --theme-left-panel-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.86) 0%, rgba(238, 247, 255, 0.78) 100%);
   --theme-preview-panel-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(242, 249, 255, 0.8) 100%);
   --theme-ambient-a: radial-gradient(circle at 35% 35%, rgba(143, 192, 255, 0.5), rgba(143, 192, 255, 0));
@@ -257,9 +281,9 @@
 }
 
 .app.theme-1 {
-  --theme-header-bg: linear-gradient(90deg, #6799d8 0%, #86b4ea 58%, #9dc4ef 100%);
-  --theme-header-border: #97bde7;
-  --theme-main-bg: linear-gradient(180deg, #eff6ff 0%, #eaf2fd 100%);
+  --theme-header-bg: linear-gradient(90deg, #e91e8c 0%, #f060a8 58%, #ffb3c6 100%);
+  --theme-header-border: #f060a8;
+  --theme-main-bg: linear-gradient(135deg, #ffb3c6 0%, #e91e8c 100%);
   --theme-left-panel-bg: linear-gradient(180deg, rgba(248, 252, 255, 0.86) 0%, rgba(230, 243, 255, 0.78) 100%);
   --theme-preview-panel-bg: linear-gradient(180deg, rgba(250, 253, 255, 0.9) 0%, rgba(236, 246, 255, 0.82) 100%);
   --theme-ambient-a: radial-gradient(circle at 35% 35%, rgba(173, 209, 255, 0.45), rgba(173, 209, 255, 0));
@@ -267,9 +291,9 @@
 }
 
 .app.theme-2 {
-  --theme-header-bg: linear-gradient(90deg, #4e90de 0%, #67a6eb 58%, #84b9f1 100%);
-  --theme-header-border: #7eafe7;
-  --theme-main-bg: linear-gradient(180deg, #e9f3ff 0%, #e2eefc 100%);
+  --theme-header-bg: linear-gradient(90deg, #f07020 0%, #f09040 58%, #ffd580 100%);
+  --theme-header-border: #f09040;
+  --theme-main-bg: linear-gradient(135deg, #ffd580 0%, #f07020 100%);
   --theme-left-panel-bg: linear-gradient(180deg, rgba(242, 249, 255, 0.85) 0%, rgba(222, 238, 255, 0.76) 100%);
   --theme-preview-panel-bg: linear-gradient(180deg, rgba(245, 251, 255, 0.88) 0%, rgba(228, 241, 255, 0.8) 100%);
   --theme-ambient-a: radial-gradient(circle at 35% 35%, rgba(120, 179, 245, 0.48), rgba(120, 179, 245, 0));
@@ -277,9 +301,9 @@
 }
 
 .app.theme-3 {
-  --theme-header-bg: linear-gradient(90deg, #3f83d8 0%, #4f92e3 58%, #6ca8ec 100%);
-  --theme-header-border: #6ca1df;
-  --theme-main-bg: linear-gradient(180deg, #e3f0ff 0%, #dbe8fa 100%);
+  --theme-header-bg: linear-gradient(90deg, #27ae60 0%, #40c878 58%, #a8f0a8 100%);
+  --theme-header-border: #40c878;
+  --theme-main-bg: linear-gradient(135deg, #a8f0a8 0%, #27ae60 100%);
   --theme-left-panel-bg: linear-gradient(180deg, rgba(236, 246, 255, 0.83) 0%, rgba(214, 233, 252, 0.74) 100%);
   --theme-preview-panel-bg: linear-gradient(180deg, rgba(240, 249, 255, 0.86) 0%, rgba(220, 236, 252, 0.78) 100%);
   --theme-ambient-a: radial-gradient(circle at 35% 35%, rgba(98, 157, 233, 0.5), rgba(98, 157, 233, 0));
@@ -287,9 +311,9 @@
 }
 
 .app.theme-4 {
-  --theme-header-bg: linear-gradient(90deg, #316fbe 0%, #3f7fcd 58%, #548fd8 100%);
-  --theme-header-border: #5d8fc8;
-  --theme-main-bg: linear-gradient(180deg, #dcecff 0%, #d5e4f8 100%);
+  --theme-header-bg: linear-gradient(90deg, #1565c0 0%, #2980d8 58%, #a0c8ff 100%);
+  --theme-header-border: #2980d8;
+  --theme-main-bg: linear-gradient(135deg, #a0c8ff 0%, #1565c0 100%);
   --theme-left-panel-bg: linear-gradient(180deg, rgba(228, 241, 255, 0.8) 0%, rgba(204, 224, 245, 0.72) 100%);
   --theme-preview-panel-bg: linear-gradient(180deg, rgba(234, 246, 255, 0.84) 0%, rgba(212, 229, 247, 0.76) 100%);
   --theme-ambient-a: radial-gradient(circle at 35% 35%, rgba(77, 133, 211, 0.45), rgba(77, 133, 211, 0));
@@ -297,13 +321,22 @@
 }
 
 .app.theme-5 {
-  --theme-header-bg: linear-gradient(90deg, #245da4 0%, #2f6ab4 58%, #3f78be 100%);
-  --theme-header-border: #4d78ad;
-  --theme-main-bg: linear-gradient(180deg, #d5e6fb 0%, #cfdef2 100%);
+  --theme-header-bg: linear-gradient(90deg, #6a1b9a 0%, #8e35b8 58%, #c9a0f8 100%);
+  --theme-header-border: #8e35b8;
+  --theme-main-bg: linear-gradient(135deg, #c9a0f8 0%, #6a1b9a 100%);
   --theme-left-panel-bg: linear-gradient(180deg, rgba(219, 236, 252, 0.76) 0%, rgba(192, 214, 238, 0.68) 100%);
   --theme-preview-panel-bg: linear-gradient(180deg, rgba(226, 241, 255, 0.8) 0%, rgba(198, 219, 240, 0.72) 100%);
   --theme-ambient-a: radial-gradient(circle at 35% 35%, rgba(57, 108, 179, 0.42), rgba(57, 108, 179, 0));
   --theme-ambient-b: radial-gradient(circle at 60% 45%, rgba(151, 188, 233, 0.45), rgba(151, 188, 233, 0));
+}
+
+.app.theme-0,
+.app.theme-1,
+.app.theme-2,
+.app.theme-3,
+.app.theme-4,
+.app.theme-5 {
+  --rose-bg-color: #ffffff;
 }
 
 .content-layout {
@@ -381,7 +414,7 @@
 .content-divider::before {
   content: '';
   width: 2px;
-  height: 100%;
+  height: calc(100% - 48px);
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(90, 143, 209, 0.15), rgba(90, 143, 209, 0.35), rgba(90, 143, 209, 0.15));
 }
@@ -389,7 +422,7 @@
 .preview-panel {
   position: sticky;
   top: 12px;
-  background: var(--content-panel-bg);
+  background: var(--rose-bg-color);
   border: 1px solid #cfe0f4;
   border-radius: 12px;
   backdrop-filter: blur(2px);
@@ -452,8 +485,6 @@
 
 .preview-image {
   width: 100%;
-  border-radius: 10px;
-  border: 1px solid #cfe0f4;
   object-fit: cover;
   max-height: 220px;
 }
@@ -477,7 +508,7 @@
 .article-list {
   display: flex;
   flex-direction: column;
-  background: var(--content-panel-bg);
+  background: var(--rose-bg-color);
   border: 1px solid #cfe0f4;
   border-radius: 12px;
   overflow: hidden;
@@ -513,9 +544,7 @@
   width: 90px;
   height: 90px;
   object-fit: cover;
-  border-radius: 8px;
   display: block;
-  border: 1px solid var(--border);
 }
 
 .article-body {
@@ -549,7 +578,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  background: var(--content-panel-bg);
+  background: var(--rose-bg-color);
   border: 1px solid #cfe0f4;
   border-radius: 12px;
   overflow: hidden;
@@ -603,7 +632,7 @@
   border: 1px solid #cfe0f4;
   border-radius: 12px;
   overflow: hidden;
-  background: var(--content-panel-bg);
+  background: var(--rose-bg-color);
   backdrop-filter: blur(2px);
   max-height: 100%;
   overflow-y: auto;
