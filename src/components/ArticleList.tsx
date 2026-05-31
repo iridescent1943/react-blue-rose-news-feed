@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react';
 import type { Article } from '../types';
 import { ArticleCard } from './ArticleCard';
 
@@ -9,6 +10,9 @@ interface Props {
   selectedKey: string | null;
   onSelectTemplate: (article: Article) => void;
 }
+
+const BOOKMARKS_STORAGE_KEY = 'news-bookmarked-article-keys';
+const READ_STORAGE_KEY = 'news-read-article-keys';
 
 function getArticleKey(article: { feedId: string; link: string; pubDate: string }): string {
   return `${article.feedId}::${article.link}::${article.pubDate}`;
@@ -161,6 +165,68 @@ function TemplateArticles({ onSelectTemplate }: { onSelectTemplate: (article: Ar
 }
 
 export function ArticleList({ articles, loading, activeCount, onSelect, selectedKey, onSelectTemplate }: Props) {
+  const [selectedSource, setSelectedSource] = useState('all');
+  const [selectedTime, setSelectedTime] = useState<'all' | 'today' | 'days7' | 'days30'>('all');
+  const [selectedSection, setSelectedSection] = useState<'all' | 'saved'>('all');
+  const [bookmarkedKeys, setBookmarkedKeys] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem(BOOKMARKS_STORAGE_KEY);
+      if (!stored) return [];
+      const parsed = JSON.parse(stored) as unknown;
+      return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+    } catch {
+      return [];
+    }
+  });
+  const [readKeys, setReadKeys] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem(READ_STORAGE_KEY);
+      if (!stored) return [];
+      const parsed = JSON.parse(stored) as unknown;
+      return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const sourceOptions = useMemo(() => {
+    const countsBySource = new Map<string, number>();
+
+    articles.forEach((article) => {
+      const articleKey = getArticleKey(article);
+      if (!readKeys.includes(articleKey)) {
+        countsBySource.set(article.feedName, (countsBySource.get(article.feedName) ?? 0) + 1);
+      }
+    });
+
+    const sourceEntries = Array.from(new Set(articles.map((article) => article.feedName)))
+      .sort((a, b) => a.localeCompare(b))
+      .map((source) => ({
+        value: source,
+        label: `${source} (${countsBySource.get(source) ?? 0})`,
+      }));
+
+    const totalUnread = Array.from(countsBySource.values()).reduce((sum, count) => sum + count, 0);
+
+    return [
+      { value: 'all', label: `All Sources (${totalUnread})` },
+      ...sourceEntries,
+    ];
+  }, [articles, readKeys]);
+
+  const effectiveSelectedSource =
+    selectedSource !== 'all' && !sourceOptions.some((option) => option.value === selectedSource)
+      ? 'all'
+      : selectedSource;
+
+  useEffect(() => {
+    localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(bookmarkedKeys));
+  }, [bookmarkedKeys]);
+
+  useEffect(() => {
+    localStorage.setItem(READ_STORAGE_KEY, JSON.stringify(readKeys));
+  }, [readKeys]);
+
   if (activeCount === 0) {
     return (
       <TemplateArticles onSelectTemplate={onSelectTemplate} />
@@ -183,23 +249,125 @@ export function ArticleList({ articles, loading, activeCount, onSelect, selected
 
   if (articles.length === 0) {
     return (
-      <TemplateArticles onSelectTemplate={onSelectTemplate} />
+      <div className="empty-state">
+        No articles loaded yet. Add or enable a valid RSS feed in Settings.
+      </div>
     );
   }
 
+  const filteredArticles =
+    effectiveSelectedSource === 'all'
+      ? articles
+      : articles.filter((article) => article.feedName === effectiveSelectedSource);
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const last7Start = new Date(todayStart);
+  last7Start.setDate(last7Start.getDate() - 6);
+
+  const last30Start = new Date(todayStart);
+  last30Start.setDate(last30Start.getDate() - 29);
+
+  const timeFilteredArticles = filteredArticles.filter((article) => {
+    if (selectedTime === 'all') return true;
+
+    const publishedAt = new Date(article.pubDate);
+    if (isNaN(publishedAt.getTime())) return false;
+
+    if (selectedTime === 'today') {
+      return publishedAt >= todayStart;
+    }
+
+    if (selectedTime === 'days7') {
+      return publishedAt >= last7Start;
+    }
+
+    return publishedAt >= last30Start;
+  });
+
+  const filteredEntries = timeFilteredArticles.map((article) => ({
+    article,
+    articleKey: getArticleKey(article),
+  }));
+
+  const savedEntries = filteredEntries.filter((entry) => bookmarkedKeys.includes(entry.articleKey));
+  const allEntries = filteredEntries;
+  const visibleEntries = selectedSection === 'saved' ? savedEntries : allEntries;
+
+  function toggleBookmark(articleKey: string) {
+    setBookmarkedKeys((prev) =>
+      prev.includes(articleKey)
+        ? prev.filter((key) => key !== articleKey)
+        : [articleKey, ...prev]
+    );
+  }
+
+  function handleSelectArticle(articleKey: string) {
+    setReadKeys((prev) => (prev.includes(articleKey) ? prev : [articleKey, ...prev]));
+    onSelect(articleKey);
+  }
+
   return (
-    <div className="article-list">
-      {articles.map((article) => {
-        const articleKey = getArticleKey(article);
-        return (
-        <ArticleCard
-          key={articleKey}
-          article={article}
-          onSelect={() => onSelect(articleKey)}
-          selected={selectedKey === articleKey}
-        />
-        );
-      })}
+    <div className="article-list-wrap">
+      <div className="article-filter-bar">
+        <select
+          id="article-source-filter"
+          className="article-filter-select"
+          aria-label="Filter articles by source"
+          value={effectiveSelectedSource}
+          onChange={(e) => setSelectedSource(e.target.value)}
+        >
+          {sourceOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <select
+          id="article-time-filter"
+          className="article-filter-select article-filter-select-time"
+          aria-label="Filter articles by time"
+          value={selectedTime}
+          onChange={(e) => setSelectedTime(e.target.value as 'all' | 'today' | 'days7' | 'days30')}
+        >
+          <option value="all">All Time</option>
+          <option value="today">Today</option>
+          <option value="days7">Last 7 days</option>
+          <option value="days30">Last 30 days</option>
+        </select>
+        <div className="article-section-switch" aria-label="Article sections">
+          <button
+            type="button"
+            aria-pressed={selectedSection === 'saved'}
+            className={`article-section-btn ${selectedSection === 'saved' ? 'active' : ''}`}
+            onClick={() => setSelectedSection((prev) => (prev === 'saved' ? 'all' : 'saved'))}
+          >
+            Saved ({savedEntries.length})
+          </button>
+        </div>
+      </div>
+
+      <div className="article-list">
+        {visibleEntries.length === 0 && (
+          <div className="empty-state article-filter-empty">
+            {selectedSection === 'saved'
+              ? 'No saved articles for the selected source.'
+              : 'No articles for the selected source.'}
+          </div>
+        )}
+        {visibleEntries.map(({ article, articleKey }) => (
+          <ArticleCard
+            key={articleKey}
+            article={article}
+            onSelect={() => handleSelectArticle(articleKey)}
+            selected={selectedKey === articleKey}
+            isRead={readKeys.includes(articleKey)}
+            bookmarked={bookmarkedKeys.includes(articleKey)}
+            onToggleBookmark={() => toggleBookmark(articleKey)}
+          />
+        ))}
+      </div>
     </div>
   );
 }

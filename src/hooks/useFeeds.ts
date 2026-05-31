@@ -8,19 +8,21 @@ const FEED_COLORS = [
   '#5c3d6b', '#a0527a', '#3d1f4f', '#b87ba0',
 ];
 
+const NATURE_PLANTS_FEED_URL = 'https://www.nature.com/nplants.rss';
+
 const DEFAULT_FEEDS: Feed[] = [
   {
     id: crypto.randomUUID(),
-    name: 'Florist Review',
-    url: 'https://floristrytoday.com/feed/',
+    name: 'The English Garden',
+    url: 'https://www.theenglishgarden.co.uk/rss.xml',
     active: true,
     color: FEED_COLORS[0],
     kind: 'rss',
   },
   {
     id: crypto.randomUUID(),
-    name: 'The English Garden',
-    url: 'https://www.theenglishgarden.co.uk/feed/',
+    name: 'Nature Plants',
+    url: NATURE_PLANTS_FEED_URL,
     active: true,
     color: FEED_COLORS[1],
     kind: 'rss',
@@ -42,9 +44,51 @@ function nextColor(feeds: Feed[]): string {
 
 export function useFeeds() {
   const [feeds, setFeeds] = useState<Feed[]>(() => {
+    function migrateFeeds(input: Feed[]): Feed[] {
+      const migratedFeeds = input.map((feed) => {
+        if (feed.url === 'https://www.theenglishgarden.co.uk/feed/') {
+          return { ...feed, url: 'https://www.theenglishgarden.co.uk/rss.xml' };
+        }
+
+        if (feed.url === 'https://floristrytoday.com/feed/') {
+          return {
+            ...feed,
+            active: false,
+            name: feed.name.includes('(offline)') ? feed.name : `${feed.name} (offline)`,
+          };
+        }
+
+        if (feed.url.includes('nature.com/') && feed.name.includes('(disabled)')) {
+          return {
+            ...feed,
+            active: true,
+            name: feed.name.replace(' (disabled)', ''),
+          };
+        }
+
+        return feed;
+      });
+
+      const hasNaturePlants = migratedFeeds.some((feed) => feed.url === NATURE_PLANTS_FEED_URL);
+      if (!hasNaturePlants) {
+        migratedFeeds.push({
+          id: crypto.randomUUID(),
+          name: 'Nature Plants',
+          url: NATURE_PLANTS_FEED_URL,
+          active: true,
+          color: nextColor(migratedFeeds),
+          kind: 'rss',
+        });
+      }
+
+      return migratedFeeds;
+    }
+
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? (JSON.parse(stored) as Feed[]) : DEFAULT_FEEDS;
+      if (!stored) return DEFAULT_FEEDS;
+      const parsed = JSON.parse(stored) as Feed[];
+      return migrateFeeds(parsed);
     } catch {
       return DEFAULT_FEEDS;
     }

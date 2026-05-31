@@ -18,6 +18,11 @@ interface AddForm {
 
 const EMPTY_FORM: AddForm = { kind: 'rss', name: '', url: '', error: '' };
 
+const ENGLISH_GARDEN_RSS = {
+  name: 'The English Garden',
+  url: 'https://www.theenglishgarden.co.uk/rss.xml',
+} as const;
+
 export function SettingsPanel({ feeds, errors, onToggle, onRemove, onAdd }: Props) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<AddForm>(EMPTY_FORM);
@@ -90,6 +95,21 @@ export function SettingsPanel({ feeds, errors, onToggle, onRemove, onAdd }: Prop
         {/* Add source form */}
         <section className="source-section add-source-section">
           <h3 className="source-section-title">Add Source</h3>
+          <button
+            type="button"
+            className="btn-add"
+            onClick={() =>
+              setForm((f) => ({
+                ...f,
+                kind: 'rss',
+                name: ENGLISH_GARDEN_RSS.name,
+                url: ENGLISH_GARDEN_RSS.url,
+                error: '',
+              }))
+            }
+          >
+            Use English Garden RSS
+          </button>
           <form onSubmit={handleSubmit} className="add-source-form">
             <div className="form-row kind-row">
               <label className={`kind-btn ${form.kind === 'rss' ? 'selected' : ''}`}>
