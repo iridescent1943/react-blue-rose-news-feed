@@ -10,43 +10,150 @@ interface Props {
 }
 
 interface AddForm {
-  kind: FeedKind;
   name: string;
   url: string;
   error: string;
 }
 
-const EMPTY_FORM: AddForm = { kind: 'rss', name: '', url: '', error: '' };
+interface ConfirmState {
+  removedCount: number;
+  disabledCount: number;
+}
 
-const ENGLISH_GARDEN_RSS = {
-  name: 'The English Garden',
-  url: 'https://www.theenglishgarden.co.uk/rss.xml',
-} as const;
+const EMPTY_FORM: AddForm = { name: '', url: '', error: '' };
+const FEED_COLORS = [
+  '#7b3f6e', '#4a2040', '#9b5a8a', '#c084b0',
+  '#5c3d6b', '#a0527a', '#3d1f4f', '#b87ba0',
+];
+
+function nextColor(feeds: Feed[]): string {
+  const used = new Set(feeds.map((f) => f.color));
+  return FEED_COLORS.find((c) => !used.has(c)) ?? FEED_COLORS[feeds.length % FEED_COLORS.length];
+}
 
 export function SettingsPanel({ feeds, errors, onToggle, onRemove, onAdd }: Props) {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<AddForm>(EMPTY_FORM);
+  const [draftFeeds, setDraftFeeds] = useState<Feed[]>(feeds);
+  const [rssForm, setRssForm] = useState<AddForm>(EMPTY_FORM);
+  const [alertForm, setAlertForm] = useState<AddForm>(EMPTY_FORM);
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
 
-  const rssFeeds = feeds.filter((f) => f.kind === 'rss');
-  const alertFeeds = feeds.filter((f) => f.kind === 'google-alert');
+  const rssFeeds = draftFeeds.filter((f) => f.kind === 'rss');
+  const alertFeeds = draftFeeds.filter((f) => f.kind === 'google-alert');
 
-  function handleSubmit(e: React.FormEvent) {
+  function openSettings() {
+    setDraftFeeds(feeds);
+    setRssForm(EMPTY_FORM);
+    setAlertForm(EMPTY_FORM);
+    setConfirmState(null);
+    setOpen(true);
+  }
+
+  function closeWithoutApply() {
+    setDraftFeeds(feeds);
+    setRssForm(EMPTY_FORM);
+    setAlertForm(EMPTY_FORM);
+    setConfirmState(null);
+    setOpen(false);
+  }
+
+  function toggleDraftFeed(id: string) {
+    setDraftFeeds((prev) => prev.map((feed) => (feed.id === id ? { ...feed, active: !feed.active } : feed)));
+  }
+
+  function removeDraftFeed(id: string) {
+    setDraftFeeds((prev) => prev.filter((feed) => feed.id !== id));
+  }
+
+  function handleSubmit(kind: FeedKind, e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name.trim()) { setForm((f) => ({ ...f, error: 'Name is required' })); return; }
-    if (!form.url.trim()) { setForm((f) => ({ ...f, error: 'URL is required' })); return; }
-    try { new URL(form.url.trim()); } catch {
+    const form = kind === 'rss' ? rssForm : alertForm;
+    const setForm = kind === 'rss' ? setRssForm : setAlertForm;
+
+    if (!form.name.trim()) {
+      setForm((f) => ({ ...f, error: 'Name is required' }));
+      return;
+    }
+
+    if (!form.url.trim()) {
+      setForm((f) => ({ ...f, error: 'URL is required' }));
+      return;
+    }
+
+    try {
+      new URL(form.url.trim());
+    } catch {
       setForm((f) => ({ ...f, error: 'Enter a valid URL' }));
       return;
     }
-    onAdd(form.name, form.url, form.kind);
+
+    const name = form.name.trim();
+    const url = form.url.trim();
+
+    setDraftFeeds((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        name,
+        url,
+        active: true,
+        color: nextColor(prev),
+        kind,
+      },
+    ]);
+
     setForm(EMPTY_FORM);
+  }
+
+  function applyChanges() {
+    const originalById = new Map(feeds.map((feed) => [feed.id, feed]));
+    const draftById = new Map(draftFeeds.map((feed) => [feed.id, feed]));
+
+    feeds.forEach((feed) => {
+      if (!draftById.has(feed.id)) {
+        onRemove(feed.id);
+      }
+    });
+
+    feeds.forEach((feed) => {
+      const draftFeed = draftById.get(feed.id);
+      if (!draftFeed) return;
+      if (draftFeed.active !== feed.active) {
+        onToggle(feed.id);
+      }
+    });
+
+    draftFeeds.forEach((feed) => {
+      if (!originalById.has(feed.id)) {
+        onAdd(feed.name, feed.url, feed.kind);
+      }
+    });
+
+    closeWithoutApply();
+  }
+
+  function handleApply() {
+    const draftById = new Map(draftFeeds.map((feed) => [feed.id, feed]));
+
+    const removedCount = feeds.filter((feed) => !draftById.has(feed.id)).length;
+    const disabledCount = feeds.filter((feed) => {
+      const draftFeed = draftById.get(feed.id);
+      return !!draftFeed && feed.active && !draftFeed.active;
+    }).length;
+
+    if (removedCount > 0 || disabledCount > 0) {
+      setConfirmState({ removedCount, disabledCount });
+      return;
+    }
+
+    applyChanges();
   }
 
   return (
     <>
       <button
         className={`settings-toggle ${open ? 'open' : ''}`}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => (open ? closeWithoutApply() : openSettings())}
         title="Open settings"
         aria-label="Toggle settings"
       >
@@ -59,23 +166,37 @@ export function SettingsPanel({ feeds, errors, onToggle, onRemove, onAdd }: Prop
       <aside className={`settings-panel ${open ? 'open' : ''}`}>
         <div className="settings-header">
           <h2>Settings</h2>
-          <button className="settings-close" onClick={() => setOpen(false)} aria-label="Close settings">✕</button>
+          <button className="settings-close" onClick={closeWithoutApply} aria-label="Close settings">✕</button>
         </div>
 
-        {/* RSS Feeds */}
         <section className="source-section">
           <h3 className="source-section-title">
             <span className="source-icon rss-icon">RSS</span> RSS Feeds
           </h3>
           <ul className="source-list">
             {rssFeeds.map((feed) => (
-              <FeedRow key={feed.id} feed={feed} error={errors[feed.id]} onToggle={onToggle} onRemove={onRemove} />
+              <FeedRow key={feed.id} feed={feed} error={errors[feed.id]} onToggle={toggleDraftFeed} onRemove={removeDraftFeed} />
             ))}
             {rssFeeds.length === 0 && <li className="source-empty">No RSS feeds added yet.</li>}
           </ul>
+          <form onSubmit={(e) => handleSubmit('rss', e)} className="add-source-form">
+            <input
+              type="text"
+              placeholder="RSS source name"
+              value={rssForm.name}
+              onChange={(e) => setRssForm((f) => ({ ...f, name: e.target.value, error: '' }))}
+            />
+            <input
+              type="url"
+              placeholder="RSS / Atom URL"
+              value={rssForm.url}
+              onChange={(e) => setRssForm((f) => ({ ...f, url: e.target.value, error: '' }))}
+            />
+            {rssForm.error && <p className="form-error">{rssForm.error}</p>}
+            <button type="submit" className="btn-add">Add RSS feed</button>
+          </form>
         </section>
 
-        {/* Google Alerts */}
         <section className="source-section">
           <h3 className="source-section-title">
             <span className="source-icon alert-icon">G</span> Google Alerts
@@ -86,68 +207,109 @@ export function SettingsPanel({ feeds, errors, onToggle, onRemove, onAdd }: Prop
           </p>
           <ul className="source-list">
             {alertFeeds.map((feed) => (
-              <FeedRow key={feed.id} feed={feed} error={errors[feed.id]} onToggle={onToggle} onRemove={onRemove} />
+              <FeedRow key={feed.id} feed={feed} error={errors[feed.id]} onToggle={toggleDraftFeed} onRemove={removeDraftFeed} />
             ))}
             {alertFeeds.length === 0 && <li className="source-empty">No Google Alerts added yet.</li>}
           </ul>
-        </section>
-
-        {/* Add source form */}
-        <section className="source-section add-source-section">
-          <h3 className="source-section-title">Add Source</h3>
-          <button
-            type="button"
-            className="btn-add"
-            onClick={() =>
-              setForm((f) => ({
-                ...f,
-                kind: 'rss',
-                name: ENGLISH_GARDEN_RSS.name,
-                url: ENGLISH_GARDEN_RSS.url,
-                error: '',
-              }))
-            }
-          >
-            Use English Garden RSS
-          </button>
-          <form onSubmit={handleSubmit} className="add-source-form">
-            <div className="form-row kind-row">
-              <label className={`kind-btn ${form.kind === 'rss' ? 'selected' : ''}`}>
-                <input type="radio" name="kind" value="rss" checked={form.kind === 'rss'}
-                  onChange={() => setForm((f) => ({ ...f, kind: 'rss' }))} /> RSS Feed
-              </label>
-              <label className={`kind-btn ${form.kind === 'google-alert' ? 'selected' : ''}`}>
-                <input type="radio" name="kind" value="google-alert" checked={form.kind === 'google-alert'}
-                  onChange={() => setForm((f) => ({ ...f, kind: 'google-alert' }))} /> Google Alert
-              </label>
-            </div>
-            <input type="text" placeholder="Source name"
-              value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value, error: '' }))} />
-            <input type="url" placeholder={form.kind === 'google-alert' ? 'Google Alert RSS URL' : 'RSS / Atom URL'}
-              value={form.url} onChange={(e) => setForm((f) => ({ ...f, url: e.target.value, error: '' }))} />
-            {form.error && <p className="form-error">{form.error}</p>}
-            <button type="submit" className="btn-add">Add source</button>
+          <form onSubmit={(e) => handleSubmit('google-alert', e)} className="add-source-form">
+            <input
+              type="text"
+              placeholder="Google Alert name"
+              value={alertForm.name}
+              onChange={(e) => setAlertForm((f) => ({ ...f, name: e.target.value, error: '' }))}
+            />
+            <input
+              type="url"
+              placeholder="Google Alert RSS URL"
+              value={alertForm.url}
+              onChange={(e) => setAlertForm((f) => ({ ...f, url: e.target.value, error: '' }))}
+            />
+            {alertForm.error && <p className="form-error">{alertForm.error}</p>}
+            <button type="submit" className="btn-add">Add Google Alert</button>
           </form>
         </section>
+
+        <div className="settings-footer">
+          <button type="button" className="settings-footer-btn" onClick={closeWithoutApply}>Cancel</button>
+          <button type="button" className="settings-footer-btn primary" onClick={handleApply}>Apply</button>
+        </div>
       </aside>
 
-      {open && <div className="settings-backdrop" onClick={() => setOpen(false)} />}
+      {open && <div className="settings-backdrop" onClick={closeWithoutApply} />}
+      {open && confirmState && (
+        <>
+          <div className="settings-confirm-backdrop" onClick={() => setConfirmState(null)} />
+          <section className="settings-confirm-modal" role="dialog" aria-modal="true" aria-label="Confirm settings changes">
+            <div className="settings-confirm-head">
+              <h3 className="settings-confirm-title">Confirm changes</h3>
+            </div>
+            <div className="settings-confirm-body">
+              <p className="settings-confirm-text">
+                {confirmState.removedCount > 0 && confirmState.disabledCount > 0
+                  ? `You are about to remove ${confirmState.removedCount} source${confirmState.removedCount === 1 ? '' : 's'} and disable ${confirmState.disabledCount} source${confirmState.disabledCount === 1 ? '' : 's'}.`
+                  : confirmState.removedCount > 0
+                    ? `You are about to remove ${confirmState.removedCount} source${confirmState.removedCount === 1 ? '' : 's'}.`
+                    : `You are about to disable ${confirmState.disabledCount} source${confirmState.disabledCount === 1 ? '' : 's'}.`}
+              </p>
+              <p className="settings-confirm-text">Do you want to continue?</p>
+              <div className="settings-confirm-actions">
+                <button type="button" className="settings-footer-btn" onClick={() => setConfirmState(null)}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="settings-footer-btn primary"
+                  onClick={() => {
+                    setConfirmState(null);
+                    applyChanges();
+                  }}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
     </>
   );
 }
 
 function FeedRow({ feed, error, onToggle, onRemove }: {
-  feed: Feed; error?: string;
-  onToggle: (id: string) => void; onRemove: (id: string) => void;
+  feed: Feed;
+  error?: string;
+  onToggle: (id: string) => void;
+  onRemove: (id: string) => void;
 }) {
   return (
     <li className={`source-row ${feed.active ? '' : 'inactive'}`}>
-      <button className="source-toggle" onClick={() => onToggle(feed.id)} title={feed.active ? 'Disable' : 'Enable'}>
-        <span className="source-dot" style={{ background: feed.active ? feed.color : '#aaa' }} />
+      <div className="source-main">
+        <span className={`source-dot ${feed.active ? 'active' : 'inactive'}`} />
         <span className="source-name">{feed.name}</span>
-      </button>
-      {error && <span className="source-error" title={error}>⚠</span>}
-      <button className="source-remove" onClick={() => onRemove(feed.id)} title="Remove">✕</button>
+      </div>
+      {error && (
+        <span className="source-error tooltip-anchor" data-tooltip={error}>
+          ⚠
+        </span>
+      )}
+      <div className="source-actions-right">
+        <button
+          className="source-action-btn source-disable-btn tooltip-anchor"
+          onClick={() => onToggle(feed.id)}
+          data-tooltip={feed.active ? 'Disable' : 'Enable'}
+          aria-label={feed.active ? 'Disable' : 'Enable'}
+        >
+          ⟳
+        </button>
+        <button
+          className="source-action-btn source-remove tooltip-anchor"
+          onClick={() => onRemove(feed.id)}
+          data-tooltip="Remove"
+          aria-label="Remove"
+        >
+          ✕
+        </button>
+      </div>
     </li>
   );
 }
