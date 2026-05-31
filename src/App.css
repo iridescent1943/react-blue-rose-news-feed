@@ -908,6 +908,58 @@
 }
 
 /* ── Settings toggle button (in header) ── */
+.settings-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-menu-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.settings-hover-menu {
+  position: absolute;
+  top: calc(100% - 1px);
+  right: 0;
+  min-width: 104px;
+  margin-top: 0;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 12px 26px rgba(11, 31, 74, 0.16);
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 130;
+}
+
+.settings-menu-wrap.authenticated:hover .settings-hover-menu,
+.settings-menu-wrap.authenticated:focus-within .settings-hover-menu {
+  display: flex;
+}
+
+.settings-hover-item {
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.83rem;
+  font-weight: 600;
+  text-align: left;
+  padding: 7px 10px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.settings-hover-item:hover {
+  background: var(--rose-pale);
+  color: var(--rose-deep);
+}
+
 .settings-toggle {
   display: flex;
   align-items: center;
@@ -983,6 +1035,56 @@
   font-size: 1rem; cursor: pointer; padding: 4px;
 }
 .settings-close:hover { color: var(--rose-pale); }
+
+.settings-login-section {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-login-title {
+  margin-bottom: 2px;
+}
+
+.settings-login-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-login-form input[type="text"],
+.settings-login-form input[type="password"] {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.83rem;
+  font-family: inherit;
+  background: transparent;
+  color: var(--text-muted);
+  outline: none;
+}
+
+.settings-login-form input[type="text"]::placeholder,
+.settings-login-form input[type="password"]::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.settings-login-form input:focus {
+  border-color: var(--rose-mid);
+}
+
+.settings-login-actions {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 2px;
+  padding: 0;
+}
 
 /* Source sections */
 .source-section { padding: 16px 18px; border-bottom: 1px solid var(--border); }
@@ -1104,6 +1206,20 @@
 .source-actions-right .tooltip-anchor:hover::after,
 .source-actions-right .tooltip-anchor:focus-visible::after {
   transform: translateY(0);
+}
+
+/* Keep the header logout tooltip inside the modal instead of clipping above it. */
+.settings-header-actions .tooltip-anchor::after {
+  top: calc(100% + 8px);
+  bottom: auto;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.settings-header-actions .tooltip-anchor:hover::after,
+.settings-header-actions .tooltip-anchor:focus-visible::after {
+  transform: translateX(-50%) translateY(0);
 }
 
 .source-actions-right {

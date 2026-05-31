@@ -20,11 +20,21 @@ interface ConfirmState {
   disabledCount: number;
 }
 
+interface LoginForm {
+  username: string;
+  password: string;
+  error: string;
+}
+
 const EMPTY_FORM: AddForm = { name: '', url: '', error: '' };
+const EMPTY_LOGIN: LoginForm = { username: '', password: '', error: '' };
 const FEED_COLORS = [
   '#7b3f6e', '#4a2040', '#9b5a8a', '#c084b0',
   '#5c3d6b', '#a0527a', '#3d1f4f', '#b87ba0',
 ];
+const ADMIN_AUTH_STORAGE_KEY = 'news-admin-authenticated';
+const ADMIN_USERNAME = import.meta.env.VITE_ADMIN_USERNAME;
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
 
 function nextColor(feeds: Feed[]): string {
   const used = new Set(feeds.map((f) => f.color));
@@ -33,10 +43,12 @@ function nextColor(feeds: Feed[]): string {
 
 export function SettingsPanel({ feeds, errors, onToggle, onRemove, onAdd }: Props) {
   const [open, setOpen] = useState(false);
+  const [authenticated, setAuthenticated] = useState(() => sessionStorage.getItem(ADMIN_AUTH_STORAGE_KEY) === 'true');
   const [draftFeeds, setDraftFeeds] = useState<Feed[]>(feeds);
   const [rssForm, setRssForm] = useState<AddForm>(EMPTY_FORM);
   const [alertForm, setAlertForm] = useState<AddForm>(EMPTY_FORM);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
+  const [loginForm, setLoginForm] = useState<LoginForm>(EMPTY_LOGIN);
 
   const rssFeeds = draftFeeds.filter((f) => f.kind === 'rss');
   const alertFeeds = draftFeeds.filter((f) => f.kind === 'google-alert');
@@ -46,6 +58,7 @@ export function SettingsPanel({ feeds, errors, onToggle, onRemove, onAdd }: Prop
     setRssForm(EMPTY_FORM);
     setAlertForm(EMPTY_FORM);
     setConfirmState(null);
+    setLoginForm(EMPTY_LOGIN);
     setOpen(true);
   }
 
@@ -54,7 +67,41 @@ export function SettingsPanel({ feeds, errors, onToggle, onRemove, onAdd }: Prop
     setRssForm(EMPTY_FORM);
     setAlertForm(EMPTY_FORM);
     setConfirmState(null);
+    setLoginForm(EMPTY_LOGIN);
     setOpen(false);
+  }
+
+  function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
+      setLoginForm((prev) => ({
+        ...prev,
+        password: '',
+        error: 'Admin credentials are not configured.',
+      }));
+      return;
+    }
+
+    if (loginForm.username.trim() !== ADMIN_USERNAME || loginForm.password !== ADMIN_PASSWORD) {
+      setLoginForm((prev) => ({
+        ...prev,
+        password: '',
+        error: 'Invalid admin credentials',
+      }));
+      return;
+    }
+
+    sessionStorage.setItem(ADMIN_AUTH_STORAGE_KEY, 'true');
+    setAuthenticated(true);
+    setLoginForm(EMPTY_LOGIN);
+  }
+
+  function handleLogout() {
+    sessionStorage.removeItem(ADMIN_AUTH_STORAGE_KEY);
+    setAuthenticated(false);
+    setConfirmState(null);
+    setLoginForm(EMPTY_LOGIN);
   }
 
   function toggleDraftFeed(id: string) {
@@ -151,17 +198,30 @@ export function SettingsPanel({ feeds, errors, onToggle, onRemove, onAdd }: Prop
 
   return (
     <>
-      <button
-        className={`settings-toggle ${open ? 'open' : ''}`}
-        onClick={() => (open ? closeWithoutApply() : openSettings())}
-        title="Open settings"
-        aria-label="Toggle settings"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="20" height="20">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-        </svg>
-      </button>
+      <div className="settings-toolbar">
+        <div className={`settings-menu-wrap ${authenticated ? 'authenticated' : ''}`}>
+          <button
+            className={`settings-toggle ${open ? 'open' : ''}`}
+            onClick={() => (open ? closeWithoutApply() : openSettings())}
+            aria-label="Toggle settings"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="20" height="20">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
+          {authenticated && (
+            <div className="settings-hover-menu" role="menu" aria-label="Settings actions">
+              <button type="button" className="settings-hover-item" onClick={openSettings}>
+                Settings
+              </button>
+              <button type="button" className="settings-hover-item" onClick={handleLogout}>
+                Log out
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
 
       <aside className={`settings-panel ${open ? 'open' : ''}`}>
         <div className="settings-header">
@@ -169,70 +229,97 @@ export function SettingsPanel({ feeds, errors, onToggle, onRemove, onAdd }: Prop
           <button className="settings-close" onClick={closeWithoutApply} aria-label="Close settings">✕</button>
         </div>
 
-        <section className="source-section">
-          <h3 className="source-section-title">
-            <span className="source-icon rss-icon">RSS</span> RSS Feeds
-          </h3>
-          <ul className="source-list">
-            {rssFeeds.map((feed) => (
-              <FeedRow key={feed.id} feed={feed} error={errors[feed.id]} onToggle={toggleDraftFeed} onRemove={removeDraftFeed} />
-            ))}
-            {rssFeeds.length === 0 && <li className="source-empty">No RSS feeds added yet.</li>}
-          </ul>
-          <form onSubmit={(e) => handleSubmit('rss', e)} className="add-source-form">
-            <input
-              type="text"
-              placeholder="RSS source name"
-              value={rssForm.name}
-              onChange={(e) => setRssForm((f) => ({ ...f, name: e.target.value, error: '' }))}
-            />
-            <input
-              type="url"
-              placeholder="RSS / Atom URL"
-              value={rssForm.url}
-              onChange={(e) => setRssForm((f) => ({ ...f, url: e.target.value, error: '' }))}
-            />
-            {rssForm.error && <p className="form-error">{rssForm.error}</p>}
-            <button type="submit" className="btn-add">Add RSS feed</button>
-          </form>
-        </section>
+        {authenticated ? (
+          <>
+            <section className="source-section">
+              <h3 className="source-section-title">
+                <span className="source-icon rss-icon">RSS</span> RSS Feeds
+              </h3>
+              <ul className="source-list">
+                {rssFeeds.map((feed) => (
+                  <FeedRow key={feed.id} feed={feed} error={errors[feed.id]} onToggle={toggleDraftFeed} onRemove={removeDraftFeed} />
+                ))}
+                {rssFeeds.length === 0 && <li className="source-empty">No RSS feeds added yet.</li>}
+              </ul>
+              <form onSubmit={(e) => handleSubmit('rss', e)} className="add-source-form">
+                <input
+                  type="text"
+                  placeholder="RSS source name"
+                  value={rssForm.name}
+                  onChange={(e) => setRssForm((f) => ({ ...f, name: e.target.value, error: '' }))}
+                />
+                <input
+                  type="url"
+                  placeholder="RSS / Atom URL"
+                  value={rssForm.url}
+                  onChange={(e) => setRssForm((f) => ({ ...f, url: e.target.value, error: '' }))}
+                />
+                {rssForm.error && <p className="form-error">{rssForm.error}</p>}
+                <button type="submit" className="btn-add">Add RSS feed</button>
+              </form>
+            </section>
 
-        <section className="source-section">
-          <h3 className="source-section-title">
-            <span className="source-icon alert-icon">G</span> Google Alerts
-          </h3>
-          <p className="source-hint">
-            In <a href="https://www.google.com/alerts" target="_blank" rel="noopener noreferrer">Google Alerts</a>,
-            set delivery to <em>RSS feed</em> and paste the feed URL below.
-          </p>
-          <ul className="source-list">
-            {alertFeeds.map((feed) => (
-              <FeedRow key={feed.id} feed={feed} error={errors[feed.id]} onToggle={toggleDraftFeed} onRemove={removeDraftFeed} />
-            ))}
-            {alertFeeds.length === 0 && <li className="source-empty">No Google Alerts added yet.</li>}
-          </ul>
-          <form onSubmit={(e) => handleSubmit('google-alert', e)} className="add-source-form">
-            <input
-              type="text"
-              placeholder="Google Alert name"
-              value={alertForm.name}
-              onChange={(e) => setAlertForm((f) => ({ ...f, name: e.target.value, error: '' }))}
-            />
-            <input
-              type="url"
-              placeholder="Google Alert RSS URL"
-              value={alertForm.url}
-              onChange={(e) => setAlertForm((f) => ({ ...f, url: e.target.value, error: '' }))}
-            />
-            {alertForm.error && <p className="form-error">{alertForm.error}</p>}
-            <button type="submit" className="btn-add">Add Google Alert</button>
-          </form>
-        </section>
+            <section className="source-section">
+              <h3 className="source-section-title">
+                <span className="source-icon alert-icon">G</span> Google Alerts
+              </h3>
+              <p className="source-hint">
+                In <a href="https://www.google.com/alerts" target="_blank" rel="noopener noreferrer">Google Alerts</a>,
+                set delivery to <em>RSS feed</em> and paste the feed URL below.
+              </p>
+              <ul className="source-list">
+                {alertFeeds.map((feed) => (
+                  <FeedRow key={feed.id} feed={feed} error={errors[feed.id]} onToggle={toggleDraftFeed} onRemove={removeDraftFeed} />
+                ))}
+                {alertFeeds.length === 0 && <li className="source-empty">No Google Alerts added yet.</li>}
+              </ul>
+              <form onSubmit={(e) => handleSubmit('google-alert', e)} className="add-source-form">
+                <input
+                  type="text"
+                  placeholder="Google Alert name"
+                  value={alertForm.name}
+                  onChange={(e) => setAlertForm((f) => ({ ...f, name: e.target.value, error: '' }))}
+                />
+                <input
+                  type="url"
+                  placeholder="Google Alert RSS URL"
+                  value={alertForm.url}
+                  onChange={(e) => setAlertForm((f) => ({ ...f, url: e.target.value, error: '' }))}
+                />
+                {alertForm.error && <p className="form-error">{alertForm.error}</p>}
+                <button type="submit" className="btn-add">Add Google Alert</button>
+              </form>
+            </section>
 
-        <div className="settings-footer">
-          <button type="button" className="settings-footer-btn" onClick={closeWithoutApply}>Cancel</button>
-          <button type="button" className="settings-footer-btn primary" onClick={handleApply}>Apply</button>
-        </div>
+            <div className="settings-footer">
+              <button type="button" className="settings-footer-btn" onClick={closeWithoutApply}>Cancel</button>
+              <button type="button" className="settings-footer-btn primary" onClick={handleApply}>Apply</button>
+            </div>
+          </>
+        ) : (
+          <section className="settings-login-section">
+            <h3 className="source-section-title settings-login-title">Admin access required to edit settings</h3>
+            <form onSubmit={handleLogin} className="settings-login-form">
+              <input
+                type="text"
+                placeholder="Username"
+                value={loginForm.username}
+                onChange={(e) => setLoginForm((prev) => ({ ...prev, username: e.target.value, error: '' }))}
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={loginForm.password}
+                onChange={(e) => setLoginForm((prev) => ({ ...prev, password: e.target.value, error: '' }))}
+              />
+              {loginForm.error && <p className="form-error">{loginForm.error}</p>}
+              <div className="settings-login-actions">
+                <button type="button" className="settings-footer-btn" onClick={closeWithoutApply}>Cancel</button>
+                <button type="submit" className="settings-footer-btn primary">Log in</button>
+              </div>
+            </form>
+          </section>
+        )}
       </aside>
 
       {open && <div className="settings-backdrop" onClick={closeWithoutApply} />}
