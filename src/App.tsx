@@ -54,13 +54,12 @@ export default function App() {
     }
 
     if (!selectedArticleKey) {
-      setSelectedArticleKey(getArticleKey(articles[0]));
       return;
     }
 
     const stillExists = articles.some((a) => getArticleKey(a) === selectedArticleKey);
     if (!stillExists) {
-      setSelectedArticleKey(getArticleKey(articles[0]));
+      setSelectedArticleKey(null);
     }
   }, [articles, selectedArticleKey, selectedTemplateArticle]);
 

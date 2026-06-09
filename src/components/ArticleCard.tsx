@@ -21,9 +21,10 @@ export function ArticleCard({ article, onSelect, selected, isRead, bookmarked, o
   const [previewBookmarkState, setPreviewBookmarkState] = useState<boolean | null>(null);
   const showThumb = Boolean(article.thumbnail) && !thumbFailed;
   const effectiveBookmarked = previewBookmarkState ?? bookmarked;
+  const cardClassName = `article-card ${selected ? 'selected' : ''} ${isRead ? 'read' : ''}`.trim();
 
   return (
-    <article className={`article-card ${selected ? 'selected' : ''}`} onClick={onSelect}>
+    <article className={cardClassName} onClick={onSelect}>
       <div className="article-thumb-link">
         {showThumb ? (
           <img

@@ -643,6 +643,13 @@
 .article-card:hover {
   background: #f1f7ff;
 }
+.article-card.read .article-thumb {
+  filter: grayscale(0.22) saturate(0.88);
+}
+.article-card.read .article-source,
+.article-card.read .article-date {
+  color: #6d86a8;
+}
 .article-card.selected {
   background: #e4f0ff;
   border-left: 3px solid #5a8fd1;
@@ -734,7 +741,10 @@
 .article-date { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; }
 
 .article-title { font-size: 1.06rem; font-weight: 700; line-height: 1.45; margin: 0 0 2px; min-width: 0; padding-right: 36px; color: #1f4f8d; letter-spacing: 0.01em; }
-.article-title-read { font-weight: 500; }
+.article-title-read {
+  font-weight: 500;
+  color: #4f6f97;
+}
 .article-title a:hover { text-decoration: underline; color: var(--rose-mid); }
 .article-desc { font-size: 0.92rem; color: var(--text-muted); line-height: 1.65; }
 .article-desc {
