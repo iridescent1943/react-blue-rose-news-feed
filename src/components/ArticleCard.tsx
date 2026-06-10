@@ -8,6 +8,7 @@ interface Props {
   isRead: boolean;
   bookmarked: boolean;
   onToggleBookmark: () => void;
+  onMarkAsUnread: () => void;
 }
 
 function formatDate(dateStr: string): string {
@@ -16,7 +17,15 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export function ArticleCard({ article, onSelect, selected, isRead, bookmarked, onToggleBookmark }: Props) {
+export function ArticleCard({
+  article,
+  onSelect,
+  selected,
+  isRead,
+  bookmarked,
+  onToggleBookmark,
+  onMarkAsUnread,
+}: Props) {
   const [thumbFailed, setThumbFailed] = useState(false);
   const [previewBookmarkState, setPreviewBookmarkState] = useState<boolean | null>(null);
   const showThumb = Boolean(article.thumbnail) && !thumbFailed;
@@ -42,54 +51,68 @@ export function ArticleCard({ article, onSelect, selected, isRead, bookmarked, o
           <h3 className={`article-title ${isRead ? 'article-title-read' : ''}`}>
             {article.title}
           </h3>
-          <button
-            type="button"
-            className={`bookmark-btn ${effectiveBookmarked ? 'saved' : ''}`}
-            aria-label={effectiveBookmarked ? 'Remove bookmark' : 'Save article'}
-            aria-pressed={effectiveBookmarked}
-            title={effectiveBookmarked ? 'Remove bookmark' : 'Save article'}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              setPreviewBookmarkState(!bookmarked);
-            }}
-            onMouseUp={(e) => {
-              e.stopPropagation();
-              if (previewBookmarkState !== null) {
-                onToggleBookmark();
-              }
-              setPreviewBookmarkState(null);
-            }}
-            onMouseLeave={() => {
-              setPreviewBookmarkState(null);
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
+          <div className="article-actions">
+            <button
+              type="button"
+              className={`read-state-dot ${isRead ? 'read' : 'unread'}`}
+              aria-label={isRead ? 'Mark article as unread' : 'New article'}
+              title={isRead ? 'Mark as unread' : 'New article'}
+              onClick={(e) => {
                 e.stopPropagation();
-                onToggleBookmark();
-              }
-            }}
-          >
-            <svg
-              className="bookmark-icon"
-              viewBox="0 0 24 24"
-              width="16"
-              height="16"
-              aria-hidden="true"
+                if (isRead) {
+                  onMarkAsUnread();
+                }
+              }}
+            />
+            <button
+              type="button"
+              className={`bookmark-btn ${effectiveBookmarked ? 'saved' : ''}`}
+              aria-label={effectiveBookmarked ? 'Remove bookmark' : 'Save article'}
+              aria-pressed={effectiveBookmarked}
+              title={effectiveBookmarked ? 'Remove bookmark' : 'Save article'}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                setPreviewBookmarkState(!bookmarked);
+              }}
+              onMouseUp={(e) => {
+                e.stopPropagation();
+                if (previewBookmarkState !== null) {
+                  onToggleBookmark();
+                }
+                setPreviewBookmarkState(null);
+              }}
+              onMouseLeave={() => {
+                setPreviewBookmarkState(null);
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onToggleBookmark();
+                }
+              }}
             >
-              <path
-                d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"
-                fill={effectiveBookmarked ? 'currentColor' : 'transparent'}
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
+              <svg
+                className="bookmark-icon"
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                aria-hidden="true"
+              >
+                <path
+                  d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"
+                  fill={effectiveBookmarked ? 'currentColor' : 'transparent'}
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
         <div className="article-meta-stack">
           <span className="article-source">

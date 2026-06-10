@@ -308,6 +308,10 @@ export function ArticleList({ articles, loading, activeCount, onSelect, selected
     onSelect(articleKey);
   }
 
+  function markArticleAsUnread(articleKey: string) {
+    setReadKeys((prev) => prev.filter((key) => key !== articleKey));
+  }
+
   return (
     <div className="article-list-wrap">
       <div className="article-filter-bar">
@@ -365,6 +369,7 @@ export function ArticleList({ articles, loading, activeCount, onSelect, selected
             isRead={readKeys.includes(articleKey)}
             bookmarked={bookmarkedKeys.includes(articleKey)}
             onToggleBookmark={() => toggleBookmark(articleKey)}
+            onMarkAsUnread={() => markArticleAsUnread(articleKey)}
           />
         ))}
       </div>
