@@ -35,53 +35,56 @@ export function ThemePanel({ width, activePalette, onPaletteSelect }: Props) {
   return (
     <aside className="theme-panel" style={width ? { width: `${width}px` } : undefined}>
       <div className="theme-panel-inner">
-        <div
-          className="rose-svg"
-          role="img"
-          aria-label="Blue rose"
-          style={{
-            background: PALETTE_SWATCHES[activePalette] ?? 'transparent',
-            width: '200px',
-            height: '250px',
-          }}
-        />
-        <div className="theme-divider" aria-hidden="true">✦ ✦ ✦</div>
+        <div className="theme-main-content">
+          <div
+            className="rose-svg"
+            role="img"
+            aria-label="Blue rose"
+            style={{
+              background: PALETTE_SWATCHES[activePalette] ?? 'transparent',
+              width: '200px',
+              height: '250px',
+            }}
+          />
+          <div className="theme-divider" aria-hidden="true">✦ ✦ ✦</div>
 
-        <div className="theme-lore">
-          <p>
-            In the language of flowers, the blue rose whispers of the
-            <em> unattainable</em> — beauty found beyond the edges of the ordinary world.
-          </p>
+          <div className="theme-lore">
+            <p>
+              In the language of flowers, the blue rose whispers of the
+              <em> unattainable</em> — beauty found beyond the edges of the ordinary world.
+            </p>
+          </div>
+
+          <div className="theme-divider" aria-hidden="true">✦ ✦ ✦</div>
+
+          <blockquote className="theme-quote">
+            "A rose by any other name would smell as sweet — but a blue rose
+            carries a dream no other colour dares to hold."
+          </blockquote>
+
+          <div className="theme-palette" aria-label="Colour palette">
+            {PALETTE_SWATCHES.map((gradient, index) => (
+              <button
+                key={gradient}
+                type="button"
+                className={`swatch ${activePalette === index ? 'active' : ''}`}
+                style={{
+                  backgroundImage: gradient,
+                  '--swatch-glow-rgb': PALETTE_GLOW_RGB[index] ?? '120, 180, 255',
+                } as React.CSSProperties}
+                onClick={() => onPaletteSelect(index)}
+
+                aria-label={`Apply palette ${index + 1}`}
+              />
+            ))}
+          </div>
+
+          <h1 className="theme-title" style={{ color: PALETTE_TITLE_COLORS[activePalette] ?? '#1565c0' }}>
+            colour the small one
+          </h1>
+          <p className="palette-hint">tap a circle to colour the rose</p>
         </div>
-
-        <div className="theme-divider" aria-hidden="true">✦ ✦ ✦</div>
-
-        <blockquote className="theme-quote">
-          "A rose by any other name would smell as sweet — but a blue rose
-          carries a dream no other colour dares to hold."
-        </blockquote>
-
-        <div className="theme-palette" aria-label="Colour palette">
-          {PALETTE_SWATCHES.map((gradient, index) => (
-            <button
-              key={gradient}
-              type="button"
-              className={`swatch ${activePalette === index ? 'active' : ''}`}
-              style={{
-                backgroundImage: gradient,
-                '--swatch-glow-rgb': PALETTE_GLOW_RGB[index] ?? '120, 180, 255',
-              } as React.CSSProperties}
-              onClick={() => onPaletteSelect(index)}
-              title={`Apply palette ${index + 1}`}
-              aria-label={`Apply palette ${index + 1}`}
-            />
-          ))}
-        </div>
-
-        <h1 className="theme-title" style={{ color: PALETTE_TITLE_COLORS[activePalette] ?? '#1565c0' }}>
-          colour the small one
-        </h1>
-        <p className="palette-hint">tap a circle to colour the rose</p>
+        <p className="theme-sidebar-footer">Blue is the Rarest Color in Nature</p>
       </div>
     </aside>
   );

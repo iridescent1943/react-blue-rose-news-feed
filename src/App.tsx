@@ -135,7 +135,7 @@ export default function App() {
   return (
     <div className={`app theme-${paletteIndex}`}>
       <header className="app-header">
-        <span className="app-header-brand">Blue is the Rarest Color in Nature</span>
+        <span className="app-header-brand">Blue Rose News Feed</span>
         <SettingsPanel
           feeds={feeds}
           errors={errors}
