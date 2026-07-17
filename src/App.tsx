@@ -12,6 +12,15 @@ function getArticleKey(article: { feedId: string; link: string; pubDate: string 
   return `${article.feedId}::${article.link}::${article.pubDate}`;
 }
 
+function getInitialLeftPanelWidth(): number {
+  const saved = localStorage.getItem('news-left-panel-width');
+  const parsed = saved ? Number(saved) : NaN;
+  const fallback = typeof window === 'undefined'
+    ? 320
+    : Math.max(220, Math.min(420, Math.round(window.innerWidth * 0.3)));
+  return Number.isFinite(parsed) && parsed >= 220 && parsed <= 420 ? parsed : fallback;
+}
+
 export default function App() {
   const { feeds, addFeed, removeFeed, toggleFeed } = useFeeds();
   const { articles, loading, errors } = useArticles(feeds);
@@ -22,11 +31,7 @@ export default function App() {
     const parsed = saved ? Number(saved) : NaN;
     return Number.isFinite(parsed) && parsed >= 35 && parsed <= 65 ? parsed : 50;
   });
-  const [leftPanelWidth, setLeftPanelWidth] = useState<number>(() => {
-    const saved = localStorage.getItem('news-left-panel-width');
-    const parsed = saved ? Number(saved) : NaN;
-    return Number.isFinite(parsed) && parsed >= 240 && parsed <= 420 ? parsed : 320;
-  });
+  const [leftPanelWidth, setLeftPanelWidth] = useState<number>(() => getInitialLeftPanelWidth());
   const [paletteIndex, setPaletteIndex] = useState<number>(() => {
     const saved = localStorage.getItem('news-theme-palette-index');
     const parsed = saved ? Number(saved) : NaN;
@@ -90,7 +95,8 @@ export default function App() {
       if (draggingLeftRef.current && appBodyRef.current) {
         const rect = appBodyRef.current.getBoundingClientRect();
         const rawWidth = e.clientX - rect.left;
-        const clamped = Math.max(240, Math.min(420, rawWidth));
+        const maxWidth = Math.max(220, Math.min(420, Math.round(window.innerWidth * 0.32)));
+        const clamped = Math.max(220, Math.min(maxWidth, rawWidth));
         setLeftPanelWidth(clamped);
         localStorage.setItem('news-left-panel-width', String(clamped));
       }
@@ -112,6 +118,23 @@ export default function App() {
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
+  }, []);
+
+  useEffect(() => {
+    function onResize() {
+      const maxWidth = Math.max(220, Math.min(420, Math.round(window.innerWidth * 0.32)));
+      setLeftPanelWidth((prev) => {
+        const clamped = Math.max(220, Math.min(maxWidth, prev));
+        if (clamped !== prev) {
+          localStorage.setItem('news-left-panel-width', String(clamped));
+        }
+        return clamped;
+      });
+    }
+
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, []);
 
   function beginResize() {

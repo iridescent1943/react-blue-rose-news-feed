@@ -42,8 +42,6 @@ export function ThemePanel({ width, activePalette, onPaletteSelect }: Props) {
             aria-label="Blue rose"
             style={{
               background: PALETTE_SWATCHES[activePalette] ?? 'transparent',
-              width: '200px',
-              height: '250px',
             }}
           />
           <div className="theme-divider" aria-hidden="true">✦ ✦ ✦</div>
