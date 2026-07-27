@@ -390,6 +390,8 @@
   --theme-preview-panel-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(242, 249, 255, 0.8) 100%);
   --theme-ambient-a: radial-gradient(circle at 35% 35%, rgba(143, 192, 255, 0.5), rgba(143, 192, 255, 0));
   --theme-ambient-b: radial-gradient(circle at 60% 45%, rgba(216, 233, 255, 0.65), rgba(216, 233, 255, 0));
+  --rose-selected: #c0392b;
+  --rose-selected-pale: #fde3e1;
 }
 
 .app.theme-1 {
@@ -402,6 +404,8 @@
   --theme-preview-panel-bg: linear-gradient(180deg, rgba(250, 253, 255, 0.9) 0%, rgba(236, 246, 255, 0.82) 100%);
   --theme-ambient-a: radial-gradient(circle at 35% 35%, rgba(173, 209, 255, 0.45), rgba(173, 209, 255, 0));
   --theme-ambient-b: radial-gradient(circle at 60% 45%, rgba(225, 237, 255, 0.7), rgba(225, 237, 255, 0));
+  --rose-selected: #e91e8c;
+  --rose-selected-pale: #fde3f0;
 }
 
 .app.theme-2 {
@@ -414,6 +418,8 @@
   --theme-preview-panel-bg: linear-gradient(180deg, rgba(245, 251, 255, 0.88) 0%, rgba(228, 241, 255, 0.8) 100%);
   --theme-ambient-a: radial-gradient(circle at 35% 35%, rgba(120, 179, 245, 0.48), rgba(120, 179, 245, 0));
   --theme-ambient-b: radial-gradient(circle at 60% 45%, rgba(206, 228, 255, 0.62), rgba(206, 228, 255, 0));
+  --rose-selected: #f07020;
+  --rose-selected-pale: #fff0da;
 }
 
 .app.theme-3 {
@@ -426,6 +432,8 @@
   --theme-preview-panel-bg: linear-gradient(180deg, rgba(240, 249, 255, 0.86) 0%, rgba(220, 236, 252, 0.78) 100%);
   --theme-ambient-a: radial-gradient(circle at 35% 35%, rgba(98, 157, 233, 0.5), rgba(98, 157, 233, 0));
   --theme-ambient-b: radial-gradient(circle at 60% 45%, rgba(191, 219, 252, 0.58), rgba(191, 219, 252, 0));
+  --rose-selected: #27ae60;
+  --rose-selected-pale: #e3f8e3;
 }
 
 .app.theme-4 {
@@ -438,6 +446,8 @@
   --theme-preview-panel-bg: linear-gradient(180deg, rgba(234, 246, 255, 0.84) 0%, rgba(212, 229, 247, 0.76) 100%);
   --theme-ambient-a: radial-gradient(circle at 35% 35%, rgba(77, 133, 211, 0.45), rgba(77, 133, 211, 0));
   --theme-ambient-b: radial-gradient(circle at 60% 45%, rgba(171, 203, 243, 0.5), rgba(171, 203, 243, 0));
+  --rose-selected: #1565c0;
+  --rose-selected-pale: #eaf3ff;
 }
 
 .app.theme-5 {
@@ -450,6 +460,8 @@
   --theme-preview-panel-bg: linear-gradient(180deg, rgba(226, 241, 255, 0.8) 0%, rgba(198, 219, 240, 0.72) 100%);
   --theme-ambient-a: radial-gradient(circle at 35% 35%, rgba(57, 108, 179, 0.42), rgba(57, 108, 179, 0));
   --theme-ambient-b: radial-gradient(circle at 60% 45%, rgba(151, 188, 233, 0.45), rgba(151, 188, 233, 0));
+  --rose-selected: #6a1b9a;
+  --rose-selected-pale: #f2e8fb;
 }
 
 .app.theme-0,
@@ -1307,9 +1319,9 @@
   left: 50%;
   bottom: calc(100% + 8px);
   transform: translateX(-50%) translateY(2px);
-  background: var(--surface);
-  color: var(--text-muted);
-  border: 1px solid var(--border);
+  background: var(--rose-selected-pale, var(--surface));
+  color: var(--rose-selected, var(--text-muted));
+  border: 1px solid var(--rose-selected, var(--border));
   border-radius: 8px;
   box-shadow: 0 8px 18px rgba(11, 31, 74, 0.14);
   padding: 5px 8px;
@@ -1351,6 +1363,20 @@
 
 .source-actions-right .tooltip-anchor:hover::after,
 .source-actions-right .tooltip-anchor:focus-visible::after {
+  transform: translateY(0);
+}
+
+/* Keep article-card action tooltips (new/unread, save) from being clipped by the article list's right edge, and show them below the button. */
+.article-actions .tooltip-anchor::after {
+  left: auto;
+  right: 0;
+  top: calc(100% + 8px);
+  bottom: auto;
+  transform: translateY(-2px);
+}
+
+.article-actions .tooltip-anchor:hover::after,
+.article-actions .tooltip-anchor:focus-visible::after {
   transform: translateY(0);
 }
 

@@ -54,9 +54,9 @@ export function ArticleCard({
           <div className="article-actions">
             <button
               type="button"
-              className={`read-state-dot ${isRead ? 'read' : 'unread'}`}
+              className={`read-state-dot tooltip-anchor ${isRead ? 'read' : 'unread'}`}
               aria-label={isRead ? 'Mark article as unread' : 'New article'}
-              title={isRead ? 'Mark as unread' : 'New article'}
+              data-tooltip={isRead ? 'Mark as unread' : 'New article'}
               onClick={(e) => {
                 e.stopPropagation();
                 if (isRead) {
@@ -66,10 +66,10 @@ export function ArticleCard({
             />
             <button
               type="button"
-              className={`bookmark-btn ${effectiveBookmarked ? 'saved' : ''}`}
-              aria-label={effectiveBookmarked ? 'Remove bookmark' : 'Save article'}
+              className={`bookmark-btn tooltip-anchor ${effectiveBookmarked ? 'saved' : ''}`}
+              aria-label={effectiveBookmarked ? 'Unsave' : 'Save article'}
               aria-pressed={effectiveBookmarked}
-              title={effectiveBookmarked ? 'Remove bookmark' : 'Save article'}
+              data-tooltip={effectiveBookmarked ? 'Unsave' : 'Save article'}
               onMouseDown={(e) => {
                 e.stopPropagation();
                 setPreviewBookmarkState(!bookmarked);
