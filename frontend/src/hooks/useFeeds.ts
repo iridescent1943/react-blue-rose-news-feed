@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Feed, FeedKind } from '../types';
+import { dataStore } from '../data';
 
 const STORAGE_KEY = 'news-feeds';
 
@@ -42,61 +43,66 @@ function nextColor(feeds: Feed[]): string {
   return FEED_COLORS.find((c) => !used.has(c)) ?? FEED_COLORS[feeds.length % FEED_COLORS.length];
 }
 
-export function useFeeds() {
-  const [feeds, setFeeds] = useState<Feed[]>(() => {
-    function migrateFeeds(input: Feed[]): Feed[] {
-      const migratedFeeds = input.map((feed) => {
-        if (feed.url === 'https://www.theenglishgarden.co.uk/feed/') {
-          return { ...feed, url: 'https://www.theenglishgarden.co.uk/rss.xml' };
-        }
-
-        if (feed.url === 'https://floristrytoday.com/feed/') {
-          return {
-            ...feed,
-            active: false,
-            name: feed.name.includes('(offline)') ? feed.name : `${feed.name} (offline)`,
-          };
-        }
-
-        if (feed.url.includes('nature.com/') && feed.name.includes('(disabled)')) {
-          return {
-            ...feed,
-            active: true,
-            name: feed.name.replace(' (disabled)', ''),
-          };
-        }
-
-        return feed;
-      });
-
-      const hasNaturePlants = migratedFeeds.some((feed) => feed.url === NATURE_PLANTS_FEED_URL);
-      if (!hasNaturePlants) {
-        migratedFeeds.push({
-          id: crypto.randomUUID(),
-          name: 'Nature Plants',
-          url: NATURE_PLANTS_FEED_URL,
-          active: true,
-          color: nextColor(migratedFeeds),
-          kind: 'rss',
-        });
-      }
-
-      return migratedFeeds;
+function migrateFeeds(input: Feed[]): Feed[] {
+  const migratedFeeds = input.map((feed) => {
+    if (feed.url === 'https://www.theenglishgarden.co.uk/feed/') {
+      return { ...feed, url: 'https://www.theenglishgarden.co.uk/rss.xml' };
     }
 
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (!stored) return DEFAULT_FEEDS;
-      const parsed = JSON.parse(stored) as Feed[];
-      return migrateFeeds(parsed);
-    } catch {
-      return DEFAULT_FEEDS;
+    if (feed.url === 'https://floristrytoday.com/feed/') {
+      return {
+        ...feed,
+        active: false,
+        name: feed.name.includes('(offline)') ? feed.name : `${feed.name} (offline)`,
+      };
     }
+
+    if (feed.url.includes('nature.com/') && feed.name.includes('(disabled)')) {
+      return {
+        ...feed,
+        active: true,
+        name: feed.name.replace(' (disabled)', ''),
+      };
+    }
+
+    return feed;
   });
 
+  const hasNaturePlants = migratedFeeds.some((feed) => feed.url === NATURE_PLANTS_FEED_URL);
+  if (!hasNaturePlants) {
+    migratedFeeds.push({
+      id: crypto.randomUUID(),
+      name: 'Nature Plants',
+      url: NATURE_PLANTS_FEED_URL,
+      active: true,
+      color: nextColor(migratedFeeds),
+      kind: 'rss',
+    });
+  }
+
+  return migratedFeeds;
+}
+
+export function useFeeds() {
+  const [feeds, setFeeds] = useState<Feed[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(feeds));
-  }, [feeds]);
+    let cancelled = false;
+    dataStore.load<Feed[]>(STORAGE_KEY, DEFAULT_FEEDS).then((stored) => {
+      if (cancelled) return;
+      setFeeds(migrateFeeds(stored));
+      setLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    dataStore.save(STORAGE_KEY, feeds);
+  }, [feeds, loaded]);
 
   const addFeed = useCallback((name: string, url: string, kind: FeedKind) => {
     setFeeds((prev) => [
