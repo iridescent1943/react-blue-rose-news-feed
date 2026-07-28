@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Article } from '../types';
 import { ArticleCard } from './ArticleCard';
+import { dataStore } from '../data';
 
 interface Props {
   articles: Article[];
@@ -16,6 +17,10 @@ const READ_STORAGE_KEY = 'news-read-article-keys';
 
 function getArticleKey(article: { feedId: string; link: string; pubDate: string }): string {
   return `${article.feedId}::${article.link}::${article.pubDate}`;
+}
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 }
 
 const TEMPLATE_ARTICLES = [
@@ -168,26 +173,9 @@ export function ArticleList({ articles, loading, activeCount, onSelect, selected
   const [selectedSource, setSelectedSource] = useState('all');
   const [selectedTime, setSelectedTime] = useState<'all' | 'today' | 'days7' | 'days30'>('all');
   const [selectedSection, setSelectedSection] = useState<'all' | 'saved'>('all');
-  const [bookmarkedKeys, setBookmarkedKeys] = useState<string[]>(() => {
-    try {
-      const stored = localStorage.getItem(BOOKMARKS_STORAGE_KEY);
-      if (!stored) return [];
-      const parsed = JSON.parse(stored) as unknown;
-      return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
-    } catch {
-      return [];
-    }
-  });
-  const [readKeys, setReadKeys] = useState<string[]>(() => {
-    try {
-      const stored = localStorage.getItem(READ_STORAGE_KEY);
-      if (!stored) return [];
-      const parsed = JSON.parse(stored) as unknown;
-      return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
-    } catch {
-      return [];
-    }
-  });
+  const [bookmarkedKeys, setBookmarkedKeys] = useState<string[]>([]);
+  const [readKeys, setReadKeys] = useState<string[]>([]);
+  const [readStateLoaded, setReadStateLoaded] = useState(false);
 
   const sourceOptions = useMemo(() => {
     const countsBySource = new Map<string, number>();
@@ -220,12 +208,30 @@ export function ArticleList({ articles, loading, activeCount, onSelect, selected
       : selectedSource;
 
   useEffect(() => {
-    localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(bookmarkedKeys));
-  }, [bookmarkedKeys]);
+    let cancelled = false;
+    Promise.all([
+      dataStore.load<string[]>(BOOKMARKS_STORAGE_KEY, []),
+      dataStore.load<string[]>(READ_STORAGE_KEY, []),
+    ]).then(([bookmarks, read]) => {
+      if (cancelled) return;
+      setBookmarkedKeys(asStringArray(bookmarks));
+      setReadKeys(asStringArray(read));
+      setReadStateLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem(READ_STORAGE_KEY, JSON.stringify(readKeys));
-  }, [readKeys]);
+    if (!readStateLoaded) return;
+    dataStore.save(BOOKMARKS_STORAGE_KEY, bookmarkedKeys);
+  }, [bookmarkedKeys, readStateLoaded]);
+
+  useEffect(() => {
+    if (!readStateLoaded) return;
+    dataStore.save(READ_STORAGE_KEY, readKeys);
+  }, [readKeys, readStateLoaded]);
 
   if (activeCount === 0) {
     return (

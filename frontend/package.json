@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:aws": "tsc -b && VITE_DATA_BACKEND=api vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
