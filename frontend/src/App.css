@@ -832,7 +832,7 @@
 }
 
 .read-state-dot.unread {
-  background: #3f82d9;
+  background: var(--theme-header-border, #3f82d9);
 }
 
 .read-state-dot.read {
@@ -840,7 +840,7 @@
 }
 
 .read-state-dot:focus-visible {
-  outline: 2px solid #3f82d9;
+  outline: 2px solid var(--theme-header-border, #3f82d9);
   outline-offset: 2px;
 }
 
@@ -866,7 +866,9 @@
 }
 
 .bookmark-btn.saved {
-  color: #2f6dc2;
+  color: #fff;
+  background: var(--theme-header-border, #2f6dc2);
+  border-radius: 50%;
 }
 
 .bookmark-icon {
