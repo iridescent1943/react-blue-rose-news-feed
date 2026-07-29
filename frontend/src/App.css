@@ -866,9 +866,7 @@
 }
 
 .bookmark-btn.saved {
-  color: #fff;
-  background: var(--theme-header-border, #2f6dc2);
-  border-radius: 50%;
+  color: var(--theme-header-border, #2f6dc2);
 }
 
 .bookmark-icon {
