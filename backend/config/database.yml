@@ -1,0 +1,6 @@
+development:
+  host: localhost
+  port: 5432
+  user: newsfeed
+  password: newsfeed
+  dbname: newsfeed

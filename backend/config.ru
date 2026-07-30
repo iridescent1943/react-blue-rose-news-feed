@@ -1,5 +1,5 @@
 require 'rack/cors'
-require './app'
+require './app/controllers/application_controller'
 
 use Rack::Cors do
   allow do
@@ -8,4 +8,4 @@ use Rack::Cors do
   end
 end
 
-run Sinatra::Application
+run ApplicationController

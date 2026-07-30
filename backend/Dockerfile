@@ -10,4 +10,4 @@ RUN apk add --no-cache libpq tzdata
 COPY --from=build /usr/local/bundle /usr/local/bundle
 COPY . .
 EXPOSE 3000
-CMD bundle exec puma -p ${PORT:-3000} -b tcp://0.0.0.0
+CMD bundle exec puma
