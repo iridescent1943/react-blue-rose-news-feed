@@ -194,10 +194,8 @@ export function ArticleList({ articles, loading, activeCount, onSelect, selected
         label: `${source} (${countsBySource.get(source) ?? 0})`,
       }));
 
-    const totalUnread = Array.from(countsBySource.values()).reduce((sum, count) => sum + count, 0);
-
     return [
-      { value: 'all', label: `All Sources (${totalUnread})` },
+      { value: 'all', label: 'All Sources' },
       ...sourceEntries,
     ];
   }, [articles, readKeys]);
@@ -275,7 +273,7 @@ export function ArticleList({ articles, loading, activeCount, onSelect, selected
   const last30Start = new Date(todayStart);
   last30Start.setDate(last30Start.getDate() - 29);
 
-  const timeFilteredArticles = filteredArticles.filter((article) => {
+  const withinTimeFilter = (article: Article) => {
     if (selectedTime === 'all') return true;
 
     const publishedAt = new Date(article.pubDate);
@@ -290,15 +288,19 @@ export function ArticleList({ articles, loading, activeCount, onSelect, selected
     }
 
     return publishedAt >= last30Start;
-  });
+  };
 
-  const filteredEntries = timeFilteredArticles.map((article) => ({
-    article,
-    articleKey: getArticleKey(article),
-  }));
+  const totalUnread = articles.filter((article) => !readKeys.includes(getArticleKey(article))).length;
 
-  const savedEntries = filteredEntries.filter((entry) => bookmarkedKeys.includes(entry.articleKey));
-  const allEntries = filteredEntries;
+  const allEntries = filteredArticles
+    .filter(withinTimeFilter)
+    .map((article) => ({ article, articleKey: getArticleKey(article) }));
+
+  const savedEntries = articles
+    .filter(withinTimeFilter)
+    .map((article) => ({ article, articleKey: getArticleKey(article) }))
+    .filter((entry) => bookmarkedKeys.includes(entry.articleKey));
+
   const visibleEntries = selectedSection === 'saved' ? savedEntries : allEntries;
 
   function toggleBookmark(articleKey: string) {
@@ -349,9 +351,17 @@ export function ArticleList({ articles, loading, activeCount, onSelect, selected
         <div className="article-section-switch" aria-label="Article sections">
           <button
             type="button"
+            aria-pressed={selectedSection === 'all'}
+            className={`article-section-btn ${selectedSection === 'all' ? 'active' : ''}`}
+            onClick={() => setSelectedSection('all')}
+          >
+            Feeds ({totalUnread})
+          </button>
+          <button
+            type="button"
             aria-pressed={selectedSection === 'saved'}
             className={`article-section-btn ${selectedSection === 'saved' ? 'active' : ''}`}
-            onClick={() => setSelectedSection((prev) => (prev === 'saved' ? 'all' : 'saved'))}
+            onClick={() => setSelectedSection('saved')}
           >
             Saved ({savedEntries.length})
           </button>
@@ -362,7 +372,7 @@ export function ArticleList({ articles, loading, activeCount, onSelect, selected
         {visibleEntries.length === 0 && (
           <div className="empty-state article-filter-empty">
             {selectedSection === 'saved'
-              ? 'No saved articles for the selected source.'
+              ? 'No saved articles yet.'
               : 'No articles for the selected source.'}
           </div>
         )}
