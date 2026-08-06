@@ -67,9 +67,9 @@ export function ArticleCard({
             <button
               type="button"
               className={`bookmark-btn tooltip-anchor ${effectiveBookmarked ? 'saved' : ''}`}
-              aria-label={effectiveBookmarked ? 'Unsave' : 'Save article'}
+              aria-label={effectiveBookmarked ? 'Unsave' : 'Save'}
               aria-pressed={effectiveBookmarked}
-              data-tooltip={effectiveBookmarked ? 'Unsave' : 'Save article'}
+              data-tooltip={effectiveBookmarked ? 'Unsave' : 'Save'}
               onMouseDown={(e) => {
                 e.stopPropagation();
                 setPreviewBookmarkState(!bookmarked);
