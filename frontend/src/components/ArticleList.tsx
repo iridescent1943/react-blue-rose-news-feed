@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Article } from '../types';
 import { ArticleCard } from './ArticleCard';
-import { dataStore } from '../data';
 
 interface Props {
   articles: Article[];
@@ -10,17 +9,14 @@ interface Props {
   onSelect: (articleKey: string) => void;
   selectedKey: string | null;
   onSelectTemplate: (article: Article) => void;
+  bookmarkedKeys: string[];
+  readKeys: string[];
+  onToggleBookmark: (articleKey: string) => void;
+  onMarkAsUnread: (articleKey: string) => void;
 }
-
-const BOOKMARKS_STORAGE_KEY = 'news-bookmarked-article-keys';
-const READ_STORAGE_KEY = 'news-read-article-keys';
 
 function getArticleKey(article: { feedId: string; link: string; pubDate: string }): string {
   return `${article.feedId}::${article.link}::${article.pubDate}`;
-}
-
-function asStringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 }
 
 const TEMPLATE_ARTICLES = [
@@ -169,13 +165,21 @@ function TemplateArticles({ onSelectTemplate }: { onSelectTemplate: (article: Ar
   );
 }
 
-export function ArticleList({ articles, loading, activeCount, onSelect, selectedKey, onSelectTemplate }: Props) {
+export function ArticleList({
+  articles,
+  loading,
+  activeCount,
+  onSelect,
+  selectedKey,
+  onSelectTemplate,
+  bookmarkedKeys,
+  readKeys,
+  onToggleBookmark,
+  onMarkAsUnread,
+}: Props) {
   const [selectedSource, setSelectedSource] = useState('all');
   const [selectedTime, setSelectedTime] = useState<'all' | 'today' | 'days7' | 'days30'>('all');
   const [selectedSection, setSelectedSection] = useState<'all' | 'saved'>('all');
-  const [bookmarkedKeys, setBookmarkedKeys] = useState<string[]>([]);
-  const [readKeys, setReadKeys] = useState<string[]>([]);
-  const [readStateLoaded, setReadStateLoaded] = useState(false);
 
   const sourceOptions = useMemo(() => {
     const countsBySource = new Map<string, number>();
@@ -204,32 +208,6 @@ export function ArticleList({ articles, loading, activeCount, onSelect, selected
     selectedSource !== 'all' && !sourceOptions.some((option) => option.value === selectedSource)
       ? 'all'
       : selectedSource;
-
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      dataStore.load<string[]>(BOOKMARKS_STORAGE_KEY, []),
-      dataStore.load<string[]>(READ_STORAGE_KEY, []),
-    ]).then(([bookmarks, read]) => {
-      if (cancelled) return;
-      setBookmarkedKeys(asStringArray(bookmarks));
-      setReadKeys(asStringArray(read));
-      setReadStateLoaded(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!readStateLoaded) return;
-    dataStore.save(BOOKMARKS_STORAGE_KEY, bookmarkedKeys);
-  }, [bookmarkedKeys, readStateLoaded]);
-
-  useEffect(() => {
-    if (!readStateLoaded) return;
-    dataStore.save(READ_STORAGE_KEY, readKeys);
-  }, [readKeys, readStateLoaded]);
 
   if (activeCount === 0) {
     return (
@@ -303,23 +281,6 @@ export function ArticleList({ articles, loading, activeCount, onSelect, selected
 
   const visibleEntries = selectedSection === 'saved' ? savedEntries : allEntries;
 
-  function toggleBookmark(articleKey: string) {
-    setBookmarkedKeys((prev) =>
-      prev.includes(articleKey)
-        ? prev.filter((key) => key !== articleKey)
-        : [articleKey, ...prev]
-    );
-  }
-
-  function handleSelectArticle(articleKey: string) {
-    setReadKeys((prev) => (prev.includes(articleKey) ? prev : [articleKey, ...prev]));
-    onSelect(articleKey);
-  }
-
-  function markArticleAsUnread(articleKey: string) {
-    setReadKeys((prev) => prev.filter((key) => key !== articleKey));
-  }
-
   return (
     <div className="article-list-wrap">
       <div className="article-filter-bar">
@@ -380,12 +341,12 @@ export function ArticleList({ articles, loading, activeCount, onSelect, selected
           <ArticleCard
             key={articleKey}
             article={article}
-            onSelect={() => handleSelectArticle(articleKey)}
+            onSelect={() => onSelect(articleKey)}
             selected={selectedKey === articleKey}
             isRead={readKeys.includes(articleKey)}
             bookmarked={bookmarkedKeys.includes(articleKey)}
-            onToggleBookmark={() => toggleBookmark(articleKey)}
-            onMarkAsUnread={() => markArticleAsUnread(articleKey)}
+            onToggleBookmark={() => onToggleBookmark(articleKey)}
+            onMarkAsUnread={() => onMarkAsUnread(articleKey)}
           />
         ))}
       </div>

@@ -5,11 +5,19 @@ import { ThemePanel } from './components/ThemePanel';
 import { SettingsPanel } from './components/SettingsPanel';
 import { ArticleList } from './components/ArticleList';
 import { ArticlePreview } from './components/ArticlePreview';
+import { dataStore } from './data';
 import type { Article } from './types';
 import './App.css';
 
+const BOOKMARKS_STORAGE_KEY = 'news-bookmarked-article-keys';
+const READ_STORAGE_KEY = 'news-read-article-keys';
+
 function getArticleKey(article: { feedId: string; link: string; pubDate: string }): string {
   return `${article.feedId}::${article.link}::${article.pubDate}`;
+}
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 }
 
 function getInitialLeftPanelWidth(): number {
@@ -35,18 +43,23 @@ export default function App() {
   const [paletteIndex, setPaletteIndex] = useState<number>(() => {
     const saved = localStorage.getItem('news-theme-palette-index');
     const parsed = saved ? Number(saved) : NaN;
-    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 5 ? parsed : 4;
+    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 6 ? parsed : 5;
   });
   const contentLayoutRef = useRef<HTMLDivElement | null>(null);
   const appBodyRef = useRef<HTMLDivElement | null>(null);
   const draggingRef = useRef(false);
   const draggingLeftRef = useRef(false);
 
+  const [bookmarkedKeys, setBookmarkedKeys] = useState<string[]>([]);
+  const [readKeys, setReadKeys] = useState<string[]>([]);
+  const [readStateLoaded, setReadStateLoaded] = useState(false);
+
   const activeCount = feeds.filter((f) => f.active).length;
   const selectedArticle = selectedArticleKey
     ? articles.find((a) => getArticleKey(a) === selectedArticleKey) ?? null
     : null;
   const previewArticle = selectedArticle ?? selectedTemplateArticle;
+  const previewArticleKey = selectedArticle ? selectedArticleKey : null;
 
   useEffect(() => {
     if (articles.length === 0) {
@@ -68,9 +81,52 @@ export default function App() {
     }
   }, [articles, selectedArticleKey, selectedTemplateArticle]);
 
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      dataStore.load<string[]>(BOOKMARKS_STORAGE_KEY, []),
+      dataStore.load<string[]>(READ_STORAGE_KEY, []),
+    ]).then(([bookmarks, read]) => {
+      if (cancelled) return;
+      setBookmarkedKeys(asStringArray(bookmarks));
+      setReadKeys(asStringArray(read));
+      setReadStateLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!readStateLoaded) return;
+    dataStore.save(BOOKMARKS_STORAGE_KEY, bookmarkedKeys);
+  }, [bookmarkedKeys, readStateLoaded]);
+
+  useEffect(() => {
+    if (!readStateLoaded) return;
+    dataStore.save(READ_STORAGE_KEY, readKeys);
+  }, [readKeys, readStateLoaded]);
+
   function handleSelectArticleKey(articleKey: string) {
     setSelectedTemplateArticle(null);
     setSelectedArticleKey(articleKey);
+    setReadKeys((prev) => (prev.includes(articleKey) ? prev : [articleKey, ...prev]));
+  }
+
+  function toggleBookmark(articleKey: string) {
+    setBookmarkedKeys((prev) =>
+      prev.includes(articleKey)
+        ? prev.filter((key) => key !== articleKey)
+        : [articleKey, ...prev]
+    );
+  }
+
+  function markArticleAsUnread(articleKey: string) {
+    setReadKeys((prev) => prev.filter((key) => key !== articleKey));
+  }
+
+  function markArticleAsRead(articleKey: string) {
+    setReadKeys((prev) => (prev.includes(articleKey) ? prev : [articleKey, ...prev]));
   }
 
   function handleSplitChange(value: number) {
@@ -192,6 +248,10 @@ export default function App() {
                 onSelect={handleSelectArticleKey}
                 selectedKey={selectedArticleKey}
                 onSelectTemplate={setSelectedTemplateArticle}
+                bookmarkedKeys={bookmarkedKeys}
+                readKeys={readKeys}
+                onToggleBookmark={toggleBookmark}
+                onMarkAsUnread={markArticleAsUnread}
               />
             </section>
             <div
@@ -204,7 +264,15 @@ export default function App() {
               onKeyDown={handleDividerKeyDown}
             />
             <aside className="preview-panel">
-              <ArticlePreview article={previewArticle} />
+              <ArticlePreview
+                article={previewArticle}
+                articleKey={previewArticleKey}
+                bookmarked={previewArticleKey ? bookmarkedKeys.includes(previewArticleKey) : false}
+                isRead={previewArticleKey ? readKeys.includes(previewArticleKey) : false}
+                onToggleBookmark={toggleBookmark}
+                onMarkAsUnread={markArticleAsUnread}
+                onMarkAsRead={markArticleAsRead}
+              />
             </aside>
           </div>
         </main>
