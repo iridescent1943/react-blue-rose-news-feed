@@ -7,6 +7,9 @@ interface Props {
   onToggle: (id: string) => void;
   onRemove: (id: string) => void;
   onAdd: (name: string, url: string, kind: FeedKind) => void;
+  authenticated: boolean;
+  onLogin: (username: string, password: string) => string | null;
+  onLogout: () => void;
 }
 
 interface AddForm {
@@ -32,18 +35,14 @@ const FEED_COLORS = [
   '#7b3f6e', '#4a2040', '#9b5a8a', '#c084b0',
   '#5c3d6b', '#a0527a', '#3d1f4f', '#b87ba0',
 ];
-const ADMIN_AUTH_STORAGE_KEY = 'news-admin-authenticated';
-const ADMIN_USERNAME = import.meta.env.VITE_ADMIN_USERNAME;
-const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
 
 function nextColor(feeds: Feed[]): string {
   const used = new Set(feeds.map((f) => f.color));
   return FEED_COLORS.find((c) => !used.has(c)) ?? FEED_COLORS[feeds.length % FEED_COLORS.length];
 }
 
-export function SettingsPanel({ feeds, errors, onToggle, onRemove, onAdd }: Props) {
+export function SettingsPanel({ feeds, errors, onToggle, onRemove, onAdd, authenticated, onLogin, onLogout }: Props) {
   const [open, setOpen] = useState(false);
-  const [authenticated, setAuthenticated] = useState(() => sessionStorage.getItem(ADMIN_AUTH_STORAGE_KEY) === 'true');
   const [draftFeeds, setDraftFeeds] = useState<Feed[]>(feeds);
   const [rssForm, setRssForm] = useState<AddForm>(EMPTY_FORM);
   const [alertForm, setAlertForm] = useState<AddForm>(EMPTY_FORM);
@@ -74,32 +73,17 @@ export function SettingsPanel({ feeds, errors, onToggle, onRemove, onAdd }: Prop
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
-      setLoginForm((prev) => ({
-        ...prev,
-        password: '',
-        error: 'Admin credentials are not configured.',
-      }));
+    const error = onLogin(loginForm.username, loginForm.password);
+    if (error) {
+      setLoginForm((prev) => ({ ...prev, password: '', error }));
       return;
     }
 
-    if (loginForm.username.trim() !== ADMIN_USERNAME || loginForm.password !== ADMIN_PASSWORD) {
-      setLoginForm((prev) => ({
-        ...prev,
-        password: '',
-        error: 'Invalid admin credentials',
-      }));
-      return;
-    }
-
-    sessionStorage.setItem(ADMIN_AUTH_STORAGE_KEY, 'true');
-    setAuthenticated(true);
     setLoginForm(EMPTY_LOGIN);
   }
 
   function handleLogout() {
-    sessionStorage.removeItem(ADMIN_AUTH_STORAGE_KEY);
-    setAuthenticated(false);
+    onLogout();
     setConfirmState(null);
     setLoginForm(EMPTY_LOGIN);
   }

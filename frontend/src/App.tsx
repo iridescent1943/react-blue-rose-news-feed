@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { useFeeds } from './hooks/useFeeds';
 import { useArticles } from './hooks/useArticles';
+import { useAdminAuth } from './hooks/useAdminAuth';
 import { ThemePanel } from './components/ThemePanel';
 import { SettingsPanel } from './components/SettingsPanel';
 import { ArticleList } from './components/ArticleList';
 import { ArticlePreview } from './components/ArticlePreview';
 import { dataStore } from './data';
-import type { Article } from './types';
+import type { Article, Note } from './types';
 import './App.css';
 
 const BOOKMARKS_STORAGE_KEY = 'news-bookmarked-article-keys';
 const READ_STORAGE_KEY = 'news-read-article-keys';
+const NOTES_STORAGE_KEY = 'news-article-notes';
 
 function getArticleKey(article: { feedId: string; link: string; pubDate: string }): string {
   return `${article.feedId}::${article.link}::${article.pubDate}`;
@@ -18,6 +20,27 @@ function getArticleKey(article: { feedId: string; link: string; pubDate: string 
 
 function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+function isNote(value: unknown): value is Note {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    typeof (value as Note).id === 'string' &&
+    typeof (value as Note).text === 'string' &&
+    typeof (value as Note).createdAt === 'string'
+  );
+}
+
+function asNotesRecord(value: unknown): Record<string, Note[]> {
+  if (!value || typeof value !== 'object') return {};
+  const result: Record<string, Note[]> = {};
+  for (const [key, notes] of Object.entries(value as Record<string, unknown>)) {
+    if (Array.isArray(notes)) {
+      result[key] = notes.filter(isNote);
+    }
+  }
+  return result;
 }
 
 function getInitialLeftPanelWidth(): number {
@@ -53,6 +76,9 @@ export default function App() {
   const [bookmarkedKeys, setBookmarkedKeys] = useState<string[]>([]);
   const [readKeys, setReadKeys] = useState<string[]>([]);
   const [readStateLoaded, setReadStateLoaded] = useState(false);
+  const [notesByArticle, setNotesByArticle] = useState<Record<string, Note[]>>({});
+  const [notesLoaded, setNotesLoaded] = useState(false);
+  const { authenticated, login, logout } = useAdminAuth();
 
   const activeCount = feeds.filter((f) => f.active).length;
   const selectedArticle = selectedArticleKey
@@ -107,6 +133,23 @@ export default function App() {
     dataStore.save(READ_STORAGE_KEY, readKeys);
   }, [readKeys, readStateLoaded]);
 
+  useEffect(() => {
+    let cancelled = false;
+    dataStore.load<Record<string, Note[]>>(NOTES_STORAGE_KEY, {}).then((notes) => {
+      if (cancelled) return;
+      setNotesByArticle(asNotesRecord(notes));
+      setNotesLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!notesLoaded) return;
+    dataStore.save(NOTES_STORAGE_KEY, notesByArticle);
+  }, [notesByArticle, notesLoaded]);
+
   function handleSelectArticleKey(articleKey: string) {
     setSelectedTemplateArticle(null);
     setSelectedArticleKey(articleKey);
@@ -127,6 +170,32 @@ export default function App() {
 
   function markArticleAsRead(articleKey: string) {
     setReadKeys((prev) => (prev.includes(articleKey) ? prev : [articleKey, ...prev]));
+  }
+
+  function addNote(articleKey: string, text: string) {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const note: Note = { id: crypto.randomUUID(), text: trimmed, createdAt: new Date().toISOString() };
+    setNotesByArticle((prev) => ({
+      ...prev,
+      [articleKey]: [note, ...(prev[articleKey] ?? [])],
+    }));
+  }
+
+  function deleteNote(articleKey: string, noteId: string) {
+    setNotesByArticle((prev) => ({
+      ...prev,
+      [articleKey]: (prev[articleKey] ?? []).filter((n) => n.id !== noteId),
+    }));
+  }
+
+  function editNote(articleKey: string, noteId: string, text: string) {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setNotesByArticle((prev) => ({
+      ...prev,
+      [articleKey]: (prev[articleKey] ?? []).map((n) => (n.id === noteId ? { ...n, text: trimmed } : n)),
+    }));
   }
 
   function handleSplitChange(value: number) {
@@ -221,6 +290,9 @@ export default function App() {
           onToggle={toggleFeed}
           onRemove={removeFeed}
           onAdd={addFeed}
+          authenticated={authenticated}
+          onLogin={login}
+          onLogout={logout}
         />
       </header>
 
@@ -272,6 +344,12 @@ export default function App() {
                 onToggleBookmark={toggleBookmark}
                 onMarkAsUnread={markArticleAsUnread}
                 onMarkAsRead={markArticleAsRead}
+                notes={previewArticleKey ? notesByArticle[previewArticleKey] ?? [] : []}
+                authenticated={authenticated}
+                onLogin={login}
+                onAddNote={addNote}
+                onDeleteNote={deleteNote}
+                onEditNote={editNote}
               />
             </aside>
           </div>

@@ -663,6 +663,171 @@
   transform: scale(0.9);
 }
 
+.notes-menu-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.notes-count-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--theme-header-border, #2f6dc2);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+}
+
+.notes-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  width: 360px;
+  max-height: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 16px 34px rgba(11, 31, 74, 0.18);
+  z-index: 140;
+  overflow-x: hidden;
+}
+
+.notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 220px;
+}
+
+.notes-empty {
+  font-size: 0.83rem;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 2px 0;
+}
+
+.note-item {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--rose-pale);
+}
+
+.note-item-text {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.note-item-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.note-item-date {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.note-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.note-item-edit,
+.note-item-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: 2px 4px;
+}
+
+.note-item-edit svg {
+  display: block;
+}
+
+.note-item-edit:hover {
+  color: var(--rose-mid);
+}
+
+.note-item-delete:hover {
+  color: #c0392b;
+}
+
+.note-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.note-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.notes-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notes-add-textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 60px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.83rem;
+  font-family: inherit;
+  background: transparent;
+  color: var(--text);
+  outline: none;
+}
+
+.notes-add-textarea:focus {
+  border-color: var(--rose-mid);
+}
+
+.notes-add-form .settings-footer-btn {
+  align-self: flex-end;
+}
+
+.notes-login-form {
+  gap: 8px;
+}
+
+.notes-login-hint {
+  font-size: 0.83rem;
+  color: var(--text-muted);
+}
+
+.notes-login-form .settings-footer-btn {
+  align-self: flex-end;
+}
+
 .preview-meta-row {
   display: flex;
   align-items: center;
@@ -1503,6 +1668,18 @@
 .preview-actions-row .tooltip-anchor:hover::after,
 .preview-actions-row .tooltip-anchor:focus-visible::after {
   transform: translateX(-50%) translateY(0);
+}
+
+/* Keep the note edit/delete tooltips from being clipped by the popover's right edge. */
+.note-item-actions .tooltip-anchor::after {
+  left: auto;
+  right: 0;
+  transform: translateY(2px);
+}
+
+.note-item-actions .tooltip-anchor:hover::after,
+.note-item-actions .tooltip-anchor:focus-visible::after {
+  transform: translateY(0);
 }
 
 .source-actions-right {

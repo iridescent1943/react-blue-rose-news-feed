@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import type { Article } from '../types';
+import { useEffect, useRef, useState } from 'react';
+import type { Article, Note } from '../types';
 
 interface Props {
   article: Article | null;
@@ -9,6 +9,187 @@ interface Props {
   onToggleBookmark: (articleKey: string) => void;
   onMarkAsUnread: (articleKey: string) => void;
   onMarkAsRead: (articleKey: string) => void;
+  notes: Note[];
+  authenticated: boolean;
+  onLogin: (username: string, password: string) => string | null;
+  onAddNote: (articleKey: string, text: string) => void;
+  onDeleteNote: (articleKey: string, noteId: string) => void;
+  onEditNote: (articleKey: string, noteId: string, text: string) => void;
+}
+
+function formatNoteDate(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+    ' ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
+function NotesPopover({
+  articleKey,
+  notes,
+  authenticated,
+  onLogin,
+  onAddNote,
+  onDeleteNote,
+  onEditNote,
+  onClose,
+}: {
+  articleKey: string;
+  notes: Note[];
+  authenticated: boolean;
+  onLogin: (username: string, password: string) => string | null;
+  onAddNote: (articleKey: string, text: string) => void;
+  onDeleteNote: (articleKey: string, noteId: string) => void;
+  onEditNote: (articleKey: string, noteId: string, text: string) => void;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState('');
+  const [loginForm, setLoginForm] = useState({ username: '', password: '', error: '' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function onPointerDown(e: MouseEvent) {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    }
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [onClose]);
+
+  function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    const error = onLogin(loginForm.username, loginForm.password);
+    if (error) {
+      setLoginForm((prev) => ({ ...prev, password: '', error }));
+      return;
+    }
+    setLoginForm({ username: '', password: '', error: '' });
+  }
+
+  function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    if (!draft.trim()) return;
+    onAddNote(articleKey, draft);
+    setDraft('');
+  }
+
+  function startEdit(note: Note) {
+    setEditingId(note.id);
+    setEditDraft(note.text);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditDraft('');
+  }
+
+  function handleSaveEdit(e: React.FormEvent, noteId: string) {
+    e.preventDefault();
+    if (!editDraft.trim()) return;
+    onEditNote(articleKey, noteId, editDraft);
+    setEditingId(null);
+    setEditDraft('');
+  }
+
+  return (
+    <div className="notes-popover" ref={popoverRef} role="dialog" aria-label="Notes">
+      <div className="notes-list">
+        {notes.length === 0 && <p className="notes-empty">No notes yet.</p>}
+        {notes.map((note) =>
+          editingId === note.id ? (
+            <form key={note.id} className="note-item note-edit-form" onSubmit={(e) => handleSaveEdit(e, note.id)}>
+              <textarea
+                className="notes-add-textarea"
+                value={editDraft}
+                onChange={(e) => setEditDraft(e.target.value)}
+                rows={3}
+                autoFocus
+              />
+              <div className="note-edit-actions">
+                <button type="button" className="settings-footer-btn" onClick={cancelEdit}>Cancel</button>
+                <button type="submit" className="settings-footer-btn primary" disabled={!editDraft.trim()}>Save</button>
+              </div>
+            </form>
+          ) : (
+            <div key={note.id} className="note-item">
+              <p className="note-item-text">{note.text}</p>
+              <div className="note-item-meta">
+                <span className="note-item-date">{formatNoteDate(note.createdAt)}</span>
+                {authenticated && (
+                  <span className="note-item-actions">
+                    <button
+                      type="button"
+                      className="note-item-edit tooltip-anchor"
+                      aria-label="Edit note"
+                      data-tooltip="Edit"
+                      onClick={() => startEdit(note)}
+                    >
+                      <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true">
+                        <path
+                          d="M4 20h4l10.5-10.5a1.5 1.5 0 0 0 0-2.12l-1.88-1.88a1.5 1.5 0 0 0-2.12 0L4 16v4z"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <line x1="13.5" y1="6.5" x2="17.5" y2="10.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      className="note-item-delete tooltip-anchor"
+                      aria-label="Delete note"
+                      data-tooltip="Delete"
+                      onClick={() => onDeleteNote(articleKey, note.id)}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+              </div>
+            </div>
+          )
+        )}
+      </div>
+
+      {authenticated ? (
+        <form onSubmit={handleAdd} className="notes-add-form">
+          <textarea
+            className="notes-add-textarea"
+            placeholder="Add a note..."
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={3}
+          />
+          <button type="submit" className="settings-footer-btn primary" disabled={!draft.trim()}>
+            Add note
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={handleLogin} className="settings-login-form notes-login-form">
+          <p className="notes-login-hint">Log in to add a note.</p>
+          <input
+            type="text"
+            placeholder="Username"
+            value={loginForm.username}
+            onChange={(e) => setLoginForm((prev) => ({ ...prev, username: e.target.value, error: '' }))}
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={loginForm.password}
+            onChange={(e) => setLoginForm((prev) => ({ ...prev, password: e.target.value, error: '' }))}
+          />
+          {loginForm.error && <p className="form-error">{loginForm.error}</p>}
+          <button type="submit" className="settings-footer-btn primary">Log in</button>
+        </form>
+      )}
+    </div>
+  );
 }
 
 function PreviewActions({
@@ -18,6 +199,12 @@ function PreviewActions({
   onToggleBookmark,
   onMarkAsUnread,
   onMarkAsRead,
+  notes,
+  authenticated,
+  onLogin,
+  onAddNote,
+  onDeleteNote,
+  onEditNote,
 }: {
   articleKey: string | null;
   bookmarked: boolean;
@@ -25,8 +212,21 @@ function PreviewActions({
   onToggleBookmark: (articleKey: string) => void;
   onMarkAsUnread: (articleKey: string) => void;
   onMarkAsRead: (articleKey: string) => void;
+  notes: Note[];
+  authenticated: boolean;
+  onLogin: (username: string, password: string) => string | null;
+  onAddNote: (articleKey: string, text: string) => void;
+  onDeleteNote: (articleKey: string, noteId: string) => void;
+  onEditNote: (articleKey: string, noteId: string, text: string) => void;
 }) {
   const disabled = !articleKey;
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [prevArticleKey, setPrevArticleKey] = useState(articleKey);
+
+  if (articleKey !== prevArticleKey) {
+    setPrevArticleKey(articleKey);
+    setNotesOpen(false);
+  }
 
   return (
     <div className="preview-actions-row">
@@ -82,6 +282,55 @@ function PreviewActions({
           />
         </svg>
       </button>
+      <div className="notes-menu-wrap">
+        <button
+          type="button"
+          className={`preview-action-btn tooltip-anchor ${notes.length > 0 ? 'active' : ''}`}
+          aria-pressed={notesOpen}
+          aria-label="Notes"
+          data-tooltip="Notes"
+          disabled={disabled}
+          onClick={() => setNotesOpen((prev) => !prev)}
+        >
+          <svg
+            className="preview-action-icon"
+            viewBox="0 0 24 24"
+            width="19"
+            height="19"
+            aria-hidden="true"
+          >
+            <path
+              d="M5 4h10l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"
+              fill={notes.length > 0 ? 'currentColor' : 'transparent'}
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M15 4v4a1 1 0 0 0 1 1h4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+            <line x1="7" y1="13" x2="13" y2="13" stroke={notes.length > 0 ? 'var(--rose-bg-color, #fff)' : 'currentColor'} strokeWidth="1.4" strokeLinecap="round" />
+            <line x1="7" y1="16.5" x2="11" y2="16.5" stroke={notes.length > 0 ? 'var(--rose-bg-color, #fff)' : 'currentColor'} strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
+          {notes.length > 0 && <span className="notes-count-badge">{notes.length}</span>}
+        </button>
+        {notesOpen && articleKey && (
+          <NotesPopover
+            articleKey={articleKey}
+            notes={notes}
+            authenticated={authenticated}
+            onLogin={onLogin}
+            onAddNote={onAddNote}
+            onDeleteNote={onDeleteNote}
+            onEditNote={onEditNote}
+            onClose={() => setNotesOpen(false)}
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -140,6 +389,12 @@ export function ArticlePreview({
   onToggleBookmark,
   onMarkAsUnread,
   onMarkAsRead,
+  notes,
+  authenticated,
+  onLogin,
+  onAddNote,
+  onDeleteNote,
+  onEditNote,
 }: Props) {
   const [imageFailed, setImageFailed] = useState(false);
   const [fullContent, setFullContent] = useState<string>('');
@@ -203,6 +458,12 @@ export function ArticlePreview({
         onToggleBookmark={onToggleBookmark}
         onMarkAsUnread={onMarkAsUnread}
         onMarkAsRead={onMarkAsRead}
+        notes={notes}
+        authenticated={authenticated}
+        onLogin={onLogin}
+        onAddNote={onAddNote}
+        onDeleteNote={onDeleteNote}
+        onEditNote={onEditNote}
       />
       <h2 className="preview-title">{article.title}</h2>
       <div className="preview-meta-row">

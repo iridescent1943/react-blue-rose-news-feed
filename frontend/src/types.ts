@@ -9,6 +9,12 @@ export interface Feed {
   kind: FeedKind;
 }
 
+export interface Note {
+  id: string;
+  text: string;
+  createdAt: string;
+}
+
 export interface Article {
   title: string;
   link: string;
