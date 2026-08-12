@@ -1,21 +1,27 @@
 {
-  "name": "news-feed-infra",
-  "private": true,
-  "version": "0.0.0",
+  "name": "infra",
+  "version": "0.1.0",
   "scripts": {
     "build": "tsc",
-    "synth": "cdk synth",
-    "diff": "cdk diff",
-    "deploy": "cdk deploy"
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
-    "@types/node": "^24.12.3",
-    "aws-cdk": "^2.1133.0",
-    "ts-node": "^10.9.2",
-    "typescript": "~6.0.2"
+    "@swc/core": "^1.15.0",
+    "@swc/jest": "^0.2.39",
+    "@types/jest": "^30",
+    "@types/node": "^24.10.1",
+    "aws-cdk": "2.1133.0",
+    "jest": "^30",
+    "prettier": "^3.9.6",
+    "tsx": "^4.23.0",
+    "typescript": "~7.0.2"
   },
   "dependencies": {
-    "aws-cdk-lib": "^2.262.1",
-    "constructs": "^10.7.1"
+    "aws-cdk-lib": "^2.262.0",
+    "constructs": "^10.5.0"
   }
 }
