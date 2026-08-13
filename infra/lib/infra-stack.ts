@@ -9,12 +9,15 @@ import {
   aws_elasticloadbalancingv2 as elbv2,
   aws_cloudfront as cloudfront,
   aws_cloudfront_origins as origins,
+  aws_iam as iam,
 } from 'aws-cdk-lib';
 
 const DB_NAME = 'newsfeed';
 const DB_USERNAME = 'newsfeed';
 const BACKEND_CONTAINER_PORT = 3000;
 const FRONTEND_CONTAINER_PORT = 80;
+const GITHUB_REPO = 'iridescent1943/react-blue-rose-news-feed';
+const GITHUB_DEPLOY_BRANCH = 'main';
 
 export class InfraStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -219,10 +222,33 @@ export class InfraStack extends cdk.Stack {
       action: elbv2.ListenerAction.forward([backendTargetGroup]),
     });
 
-    // Outputs - HTTPS URL, ALB DNS name and both ECR repo URIs - Shared
+    // GitHub Actions OIDC
+    const githubOidcProvider = new iam.OpenIdConnectProvider(this, 'GitHubOidcProvider', {
+      url: 'https://token.actions.githubusercontent.com',
+      clientIds: ['sts.amazonaws.com'],
+    });
+
+    const githubDeployRole = new iam.Role(this, 'GitHubActionsDeployRole', {
+      description: 'Assumed by GitHub Actions to push images to ECR and redeploy the ECS services',
+      assumedBy: new iam.WebIdentityPrincipal(githubOidcProvider.openIdConnectProviderArn, {
+        StringEquals: { 'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com' },
+        StringLike: { 'token.actions.githubusercontent.com:sub': `repo:${GITHUB_REPO}:ref:refs/heads/${GITHUB_DEPLOY_BRANCH}` },
+      }),
+    });
+    frontendRepo.grantPullPush(githubDeployRole);
+    backendRepo.grantPullPush(githubDeployRole);
+    githubDeployRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ['ecs:UpdateService', 'ecs:DescribeServices'],
+        resources: [frontendService.serviceArn, backendService.serviceArn],
+      }),
+    );
+
+    // Outputs - HTTPS URL, ALB DNS name, both ECR repo URIs and the GitHub Actions role ARN
     new cdk.CfnOutput(this, 'SiteUrl', { value: `https://${distribution.distributionDomainName}` });
     new cdk.CfnOutput(this, 'AlbDnsName', { value: alb.loadBalancerDnsName });
     new cdk.CfnOutput(this, 'FrontendRepoUri', { value: frontendRepo.repositoryUri });
     new cdk.CfnOutput(this, 'BackendRepoUri', { value: backendRepo.repositoryUri });
+    new cdk.CfnOutput(this, 'GitHubActionsDeployRoleArn', { value: githubDeployRole.roleArn });
   }
 }
