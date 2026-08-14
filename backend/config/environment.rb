@@ -1,3 +1,4 @@
+require 'erb'
 require 'json'
 require 'pg'
 require 'uri'
@@ -16,7 +17,8 @@ def database_config
       dbname: db_uri.path.delete_prefix('/'),
     }
   else
-    config = YAML.load_file(File.join(__dir__, 'database.yml'))
+    raw = ERB.new(File.read(File.join(__dir__, 'database.yml'))).result
+    config = YAML.load(raw)
     config.fetch(RACK_ENV).transform_keys(&:to_sym)
   end
 end

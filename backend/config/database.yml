@@ -1,6 +1,6 @@
 development:
-  host: localhost
-  port: 5432
-  user: newsfeed
-  password: newsfeed
-  dbname: newsfeed
+  host: <%= ENV.fetch('DB_HOST', 'localhost') %>
+  port: <%= ENV.fetch('DB_PORT', 5432) %>
+  user: <%= ENV.fetch('DB_USER', 'newsfeed') %>
+  password: <%= ENV.fetch('DB_PASSWORD', 'newsfeed') %>
+  dbname: <%= ENV.fetch('DB_NAME', 'newsfeed') %>
