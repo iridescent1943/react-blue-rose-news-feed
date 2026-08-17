@@ -186,7 +186,7 @@ export class InfraStack extends cdk.Stack {
         CORS_ORIGIN: `https://${distribution.distributionDomainName}`,
       },
       secrets: {
-        DB_USER: ecs.Secret.fromSecretsManager(database.secret!, 'username'),
+        DB_USERNAME: ecs.Secret.fromSecretsManager(database.secret!, 'username'),
         DB_PASSWORD: ecs.Secret.fromSecretsManager(database.secret!, 'password'),
       },
     });
