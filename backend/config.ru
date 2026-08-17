@@ -1,11 +1,6 @@
-require 'rack/cors'
-require './app/controllers/application_controller'
+require_relative 'config/environment'
 
-use Rack::Cors do
-  allow do
-    origins ENV.fetch('CORS_ORIGIN', '*')
-    resource '/*', headers: :any, methods: %i[get put options]
-  end
-end
+controllers = ApplicationController.descendants
+controllers.each { |controller| use controller }
 
 run ApplicationController

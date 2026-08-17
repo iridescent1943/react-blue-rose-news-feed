@@ -1,28 +1,16 @@
-require 'erb'
-require 'json'
-require 'pg'
-require 'uri'
-require 'yaml'
+# load all gems in the Gemfile
+require 'bundler/setup'
+Bundler.require(:default, ENV['RACK_ENV'] || :development)
 
-RACK_ENV = ENV.fetch('RACK_ENV', 'development')
-
-def database_config
-  if ENV['DATABASE_URL']
-    db_uri = URI.parse(ENV['DATABASE_URL'])
-    {
-      host: db_uri.host,
-      port: db_uri.port || 5432,
-      user: db_uri.user,
-      password: db_uri.password,
-      dbname: db_uri.path.delete_prefix('/'),
-    }
-  else
-    raw = ERB.new(File.read(File.join(__dir__, 'database.yml'))).result
-    config = YAML.load(raw)
-    config.fetch(RACK_ENV).transform_keys(&:to_sym)
-  end
+# Load all application components
+Dir[File.expand_path('../../app/**/*.rb', __FILE__)].each do |file|
+  require file
 end
 
-DB = PG::Connection.new(**database_config)
-DB.type_map_for_results = PG::BasicTypeMapForResults.new(DB)
-DB.exec(File.read(File.join(__dir__, '..', 'db', 'schema.sql')))
+# Database setup using ActiveRecord
+ActiveRecord.schema_format = :sql
+db_config_file = File.expand_path('../config/database.yml', __dir__)
+db_config = YAML.safe_load(ERB.new(File.read(db_config_file)).result, aliases: true)
+env = ENV['RACK_ENV'] || 'development'
+default_db = db_config[env]
+ActiveRecord::Base.establish_connection(default_db)
