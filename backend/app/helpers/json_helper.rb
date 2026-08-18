@@ -1,4 +1,4 @@
-module JsonHelpers
+module JsonHelper
   def parse_json_body(request)
     JSON.parse(request.body.read)
   rescue JSON::ParserError

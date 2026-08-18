@@ -1,6 +1,4 @@
-require 'sinatra/base'
-
-class HealthController < Sinatra::Base
+class HealthController < ApplicationController
   get '/health' do
     content_type :text
     'ok'

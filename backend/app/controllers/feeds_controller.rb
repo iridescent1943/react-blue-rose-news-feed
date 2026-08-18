@@ -1,10 +1,4 @@
-require 'sinatra/base'
-require_relative '../helpers/json_helpers'
-require_relative '../models/feed'
-
-class FeedsController < Sinatra::Base
-  helpers JsonHelpers
-
+class FeedsController < ApplicationController
   get '/api/feeds' do
     content_type :json
     Feed.all.to_json

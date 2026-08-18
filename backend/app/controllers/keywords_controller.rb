@@ -1,10 +1,4 @@
-require 'sinatra/base'
-require_relative '../helpers/json_helpers'
-require_relative '../models/keyword'
-
-class KeywordsController < Sinatra::Base
-  helpers JsonHelpers
-
+class KeywordsController < ApplicationController
   get '/api/keywords' do
     content_type :json
     Keyword.all.to_json

@@ -1,11 +1,4 @@
-require 'sinatra/base'
-require_relative '../helpers/json_helpers'
-require_relative '../models/article'
-require_relative '../models/keyword'
-
-class ArticlesController < Sinatra::Base
-  helpers JsonHelpers
-
+class ArticlesController < ApplicationController
   post '/api/articles' do
     content_type :json
     payload = parse_json_body(request)
