@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS articles (
   link TEXT NOT NULL,
   content_html TEXT,
   content_text TEXT,
+  thumbnail_url TEXT,
   author TEXT,
   published_at TIMESTAMPTZ,
   fetched_at TIMESTAMPTZ NOT NULL DEFAULT now(),
