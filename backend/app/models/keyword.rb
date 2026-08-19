@@ -1,20 +1,9 @@
-class Keyword
-  def self.all
-    DB.exec('SELECT * FROM keywords ORDER BY created_at DESC').to_a
-  end
+class Keyword < ActiveRecord::Base
+  self.primary_key = 'keyword_id'
 
-  def self.create(term:)
-    DB.exec_params(
-      'INSERT INTO keywords (term) VALUES ($1) ON CONFLICT (term) DO NOTHING RETURNING *',
-      [term]
-    ).first
-  end
+  default_scope { order(created_at: :desc) }
 
-  def self.delete(id)
-    DB.exec_params('DELETE FROM keywords WHERE id = $1', [id])
-  end
+  belongs_to :feed, foreign_key: 'feed_id', inverse_of: :keywords, optional: true
 
-  def self.count
-    DB.exec('SELECT count(*) FROM keywords').first['count'].to_i
-  end
+  validates :keyword, presence: true, uniqueness: { scope: :feed_id, case_sensitive: false }
 end
