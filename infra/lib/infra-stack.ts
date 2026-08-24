@@ -10,6 +10,7 @@ import {
   aws_cloudfront as cloudfront,
   aws_cloudfront_origins as origins,
   aws_iam as iam,
+  aws_secretsmanager as secretsmanager,
 } from 'aws-cdk-lib';
 
 const DB_NAME = 'newsfeed';
@@ -167,6 +168,13 @@ export class InfraStack extends cdk.Stack {
     );
     dbSecurityGroup.addIngressRule(backendServiceSecurityGroup, ec2.Port.tcp(5432), 'Backend to Postgres');
 
+    const sessionSecret = new secretsmanager.Secret(this, 'SessionSecret', {
+      generateSecretString: {
+        excludePunctuation: true,
+        passwordLength: 64,
+      },
+    });
+
     const backendTaskDefinition = new ecs.FargateTaskDefinition(this, 'BackendTaskDef', {
       cpu: 256,
       memoryLimitMiB: 512,
@@ -188,6 +196,7 @@ export class InfraStack extends cdk.Stack {
       secrets: {
         DB_USERNAME: ecs.Secret.fromSecretsManager(database.secret!, 'username'),
         DB_PASSWORD: ecs.Secret.fromSecretsManager(database.secret!, 'password'),
+        SESSION_SECRET: ecs.Secret.fromSecretsManager(sessionSecret),
       },
     });
 
