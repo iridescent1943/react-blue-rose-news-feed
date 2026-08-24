@@ -25,6 +25,10 @@ class User < ActiveRecord::Base
     BCrypt::Password.new(password_hash) == plain_password
   end
 
+  def as_json(options = {})
+    super(options.merge(except: Array(options[:except]) + ['password_hash']))
+  end
+
   private
 
   def normalize_email
