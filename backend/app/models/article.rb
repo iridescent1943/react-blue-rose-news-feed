@@ -17,7 +17,7 @@ class Article < ActiveRecord::Base
              ]))
   end
 
-  def self.matching_keywords(user_id: nil)
+  def self.matching_keywords(user_id = nil)
     with_state(user_id)
       .joins("INNER JOIN keywords k ON search_vector @@ plainto_tsquery('english', k.keyword)")
       .distinct
