@@ -10,6 +10,7 @@ class FeedsController < ApplicationController
   end
 
   post '/api/feeds' do
+    require_admin!
     payload = parse_json_body(request)
     halt_error(400, 'feed_url is required') if payload['feed_url'].to_s.empty?
 
@@ -26,6 +27,7 @@ class FeedsController < ApplicationController
   end
 
   patch '/api/feeds/:id' do
+    require_admin!
     feed = Feed.find_by(feed_id: params[:id])
     halt_error(404, 'Feed not found') unless feed
 
@@ -38,6 +40,7 @@ class FeedsController < ApplicationController
   end
 
   delete '/api/feeds/:id' do
+    require_admin!
     feed = Feed.find_by(feed_id: params[:id])
     halt_error(404, 'Feed not found') unless feed
 

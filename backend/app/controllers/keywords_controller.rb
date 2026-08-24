@@ -1,21 +1,27 @@
 class KeywordsController < ApplicationController
   get '/api/keywords' do
-    content_type :json
-    Keyword.all.to_json
+    json_response(200, Keyword.all)
   end
 
   post '/api/keywords' do
-    content_type :json
+    require_admin!
     payload = parse_json_body(request)
-    halt 400, { error: 'term is required' }.to_json if payload['term'].to_s.empty?
+    halt_error(400, 'keyword is required') if payload['keyword'].to_s.empty?
 
-    result = Keyword.create(term: payload['term'])
-    status 201
-    (result || { 'term' => payload['term'] }).to_json
+    keyword = Keyword.new(keyword: payload['keyword'], feed_id: payload['feed_id'])
+    if keyword.save
+      json_response(201, keyword)
+    else
+      halt_error(422, keyword.errors.full_messages.join(', '))
+    end
   end
 
   delete '/api/keywords/:id' do
-    Keyword.delete(params[:id])
+    require_admin!
+    keyword = Keyword.find_by(keyword_id: params[:id])
+    halt_error(404, 'Keyword not found') unless keyword
+
+    keyword.destroy
     status 204
   end
 end
