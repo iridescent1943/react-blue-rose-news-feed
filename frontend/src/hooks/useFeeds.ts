@@ -104,11 +104,11 @@ export function useFeeds() {
     dataStore.save(STORAGE_KEY, feeds);
   }, [feeds, loaded]);
 
-  const addFeed = useCallback((name: string, url: string, kind: FeedKind) => {
+  const addFeed = useCallback((id: string, name: string, url: string, kind: FeedKind) => {
     setFeeds((prev) => [
       ...prev,
       {
-        id: crypto.randomUUID(),
+        id,
         name: name.trim(),
         url: url.trim(),
         active: true,

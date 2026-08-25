@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useFeeds } from './hooks/useFeeds';
 import { useArticles } from './hooks/useArticles';
+import { useKeywords } from './hooks/useKeywords';
 import { useAdminAuth } from './hooks/useAdminAuth';
 import { ThemePanel } from './components/ThemePanel';
 import { SettingsPanel } from './components/SettingsPanel';
 import { ArticleList } from './components/ArticleList';
 import { ArticlePreview } from './components/ArticlePreview';
 import { dataStore } from './data';
+import { filterArticlesByKeywords } from './utils/filterArticles';
 import type { Article, Note } from './types';
 import './App.css';
 
@@ -54,7 +56,9 @@ function getInitialLeftPanelWidth(): number {
 
 export default function App() {
   const { feeds, addFeed, removeFeed, toggleFeed } = useFeeds();
-  const { articles, loading, errors } = useArticles(feeds);
+  const { keywords, addKeyword, removeKeyword } = useKeywords();
+  const { articles: fetchedArticles, loading, errors } = useArticles(feeds);
+  const articles = filterArticlesByKeywords(fetchedArticles, keywords);
   const [selectedArticleKey, setSelectedArticleKey] = useState<string | null>(null);
   const [selectedTemplateArticle, setSelectedTemplateArticle] = useState<Article | null>(null);
   const [splitRatio, setSplitRatio] = useState<number>(() => {
@@ -290,6 +294,9 @@ export default function App() {
           onToggle={toggleFeed}
           onRemove={removeFeed}
           onAdd={addFeed}
+          keywords={keywords}
+          onAddKeyword={addKeyword}
+          onRemoveKeyword={removeKeyword}
           authenticated={authenticated}
           onLogin={login}
           onLogout={logout}

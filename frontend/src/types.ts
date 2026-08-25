@@ -9,6 +9,13 @@ export interface Feed {
   kind: FeedKind;
 }
 
+export interface Keyword {
+  id: string;
+  keyword: string;
+  /** Feed this keyword filters; null applies to all feeds. */
+  feedId: string | null;
+}
+
 export interface Note {
   id: string;
   text: string;

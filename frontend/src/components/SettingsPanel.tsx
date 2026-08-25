@@ -1,12 +1,15 @@
 import { useState } from 'react';
-import type { Feed, FeedKind } from '../types';
+import type { Feed, FeedKind, Keyword } from '../types';
 
 interface Props {
   feeds: Feed[];
   errors: Record<string, string>;
   onToggle: (id: string) => void;
   onRemove: (id: string) => void;
-  onAdd: (name: string, url: string, kind: FeedKind) => void;
+  onAdd: (id: string, name: string, url: string, kind: FeedKind) => void;
+  keywords: Keyword[];
+  onAddKeyword: (keyword: string, feedId: string | null) => void;
+  onRemoveKeyword: (id: string) => void;
   authenticated: boolean;
   onLogin: (username: string, password: string) => string | null;
   onLogout: () => void;
@@ -15,6 +18,8 @@ interface Props {
 interface AddForm {
   name: string;
   url: string;
+  keyword: string;
+  global: boolean;
   error: string;
 }
 
@@ -29,7 +34,7 @@ interface LoginForm {
   error: string;
 }
 
-const EMPTY_FORM: AddForm = { name: '', url: '', error: '' };
+const EMPTY_FORM: AddForm = { name: '', url: '', keyword: '', global: false, error: '' };
 const EMPTY_LOGIN: LoginForm = { username: '', password: '', error: '' };
 const FEED_COLORS = [
   '#7b3f6e', '#4a2040', '#9b5a8a', '#c084b0',
@@ -41,21 +46,36 @@ function nextColor(feeds: Feed[]): string {
   return FEED_COLORS.find((c) => !used.has(c)) ?? FEED_COLORS[feeds.length % FEED_COLORS.length];
 }
 
-export function SettingsPanel({ feeds, errors, onToggle, onRemove, onAdd, authenticated, onLogin, onLogout }: Props) {
+export function SettingsPanel({
+  feeds,
+  errors,
+  onToggle,
+  onRemove,
+  onAdd,
+  keywords,
+  onAddKeyword,
+  onRemoveKeyword,
+  authenticated,
+  onLogin,
+  onLogout,
+}: Props) {
   const [open, setOpen] = useState(false);
   const [draftFeeds, setDraftFeeds] = useState<Feed[]>(feeds);
-  const [rssForm, setRssForm] = useState<AddForm>(EMPTY_FORM);
-  const [alertForm, setAlertForm] = useState<AddForm>(EMPTY_FORM);
+  const [draftKeywords, setDraftKeywords] = useState<Keyword[]>(keywords);
+  const [addKind, setAddKind] = useState<FeedKind>('rss');
+  const [sourceForm, setSourceForm] = useState<AddForm>(EMPTY_FORM);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const [loginForm, setLoginForm] = useState<LoginForm>(EMPTY_LOGIN);
 
   const rssFeeds = draftFeeds.filter((f) => f.kind === 'rss');
   const alertFeeds = draftFeeds.filter((f) => f.kind === 'google-alert');
+  const globalKeywords = draftKeywords.filter((k) => k.feedId === null);
 
   function openSettings() {
     setDraftFeeds(feeds);
-    setRssForm(EMPTY_FORM);
-    setAlertForm(EMPTY_FORM);
+    setDraftKeywords(keywords);
+    setAddKind('rss');
+    setSourceForm(EMPTY_FORM);
     setConfirmState(null);
     setLoginForm(EMPTY_LOGIN);
     setOpen(true);
@@ -63,8 +83,9 @@ export function SettingsPanel({ feeds, errors, onToggle, onRemove, onAdd, authen
 
   function closeWithoutApply() {
     setDraftFeeds(feeds);
-    setRssForm(EMPTY_FORM);
-    setAlertForm(EMPTY_FORM);
+    setDraftKeywords(keywords);
+    setAddKind('rss');
+    setSourceForm(EMPTY_FORM);
     setConfirmState(null);
     setLoginForm(EMPTY_LOGIN);
     setOpen(false);
@@ -96,44 +117,82 @@ export function SettingsPanel({ feeds, errors, onToggle, onRemove, onAdd, authen
     setDraftFeeds((prev) => prev.filter((feed) => feed.id !== id));
   }
 
-  function handleSubmit(kind: FeedKind, e: React.FormEvent) {
-    e.preventDefault();
-    const form = kind === 'rss' ? rssForm : alertForm;
-    const setForm = kind === 'rss' ? setRssForm : setAlertForm;
+  function removeDraftKeyword(id: string) {
+    setDraftKeywords((prev) => prev.filter((k) => k.id !== id));
+  }
 
-    if (!form.name.trim()) {
-      setForm((f) => ({ ...f, error: 'Name is required' }));
+  function addDraftKeyword(keyword: string, feedId: string | null) {
+    const trimmed = keyword.trim();
+    if (!trimmed) return;
+    setDraftKeywords((prev) => [...prev, { id: crypto.randomUUID(), keyword: trimmed, feedId }]);
+  }
+
+  function removeKeywordFromFeed(keywordId: string, feedId: string) {
+    setDraftKeywords((prev) => {
+      const target = prev.find((k) => k.id === keywordId);
+      if (!target) return prev;
+
+      if (target.feedId !== null) {
+        return prev.filter((k) => k.id !== keywordId);
+      }
+
+      // Global keyword removed from just this one feed: keep it applied to
+      // every other existing feed, drop it only for this one.
+      const otherFeeds = draftFeeds.filter((f) => f.id !== feedId);
+      const materialized = otherFeeds.map((f) => ({
+        id: crypto.randomUUID(),
+        keyword: target.keyword,
+        feedId: f.id,
+      }));
+      return [...prev.filter((k) => k.id !== keywordId), ...materialized];
+    });
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!sourceForm.name.trim()) {
+      setSourceForm((f) => ({ ...f, error: 'Name is required' }));
       return;
     }
 
-    if (!form.url.trim()) {
-      setForm((f) => ({ ...f, error: 'URL is required' }));
+    if (!sourceForm.url.trim()) {
+      setSourceForm((f) => ({ ...f, error: 'URL is required' }));
       return;
     }
 
     try {
-      new URL(form.url.trim());
+      new URL(sourceForm.url.trim());
     } catch {
-      setForm((f) => ({ ...f, error: 'Enter a valid URL' }));
+      setSourceForm((f) => ({ ...f, error: 'Enter a valid URL' }));
       return;
     }
 
-    const name = form.name.trim();
-    const url = form.url.trim();
+    const name = sourceForm.name.trim();
+    const url = sourceForm.url.trim();
+    const keyword = sourceForm.keyword.trim();
+    const feedId = crypto.randomUUID();
 
     setDraftFeeds((prev) => [
       ...prev,
       {
-        id: crypto.randomUUID(),
+        id: feedId,
         name,
         url,
         active: true,
         color: nextColor(prev),
-        kind,
+        kind: addKind,
       },
     ]);
 
-    setForm(EMPTY_FORM);
+    if (keyword) {
+      setDraftKeywords((prev) => [
+        ...prev,
+        { id: crypto.randomUUID(), keyword, feedId: sourceForm.global ? null : feedId },
+      ]);
+    }
+
+    setSourceForm(EMPTY_FORM);
   }
 
   function applyChanges() {
@@ -156,7 +215,22 @@ export function SettingsPanel({ feeds, errors, onToggle, onRemove, onAdd, authen
 
     draftFeeds.forEach((feed) => {
       if (!originalById.has(feed.id)) {
-        onAdd(feed.name, feed.url, feed.kind);
+        onAdd(feed.id, feed.name, feed.url, feed.kind);
+      }
+    });
+
+    const originalKeywordIds = new Set(keywords.map((k) => k.id));
+    const draftKeywordIds = new Set(draftKeywords.map((k) => k.id));
+
+    keywords.forEach((k) => {
+      if (!draftKeywordIds.has(k.id)) {
+        onRemoveKeyword(k.id);
+      }
+    });
+
+    draftKeywords.forEach((k) => {
+      if (!originalKeywordIds.has(k.id)) {
+        onAddKeyword(k.keyword, k.feedId);
       }
     });
 
@@ -213,6 +287,7 @@ export function SettingsPanel({ feeds, errors, onToggle, onRemove, onAdd, authen
           <button className="settings-close" onClick={closeWithoutApply} aria-label="Close settings">✕</button>
         </div>
 
+        <div className="settings-panel-scroll">
         {authenticated ? (
           <>
             <section className="source-section">
@@ -221,64 +296,118 @@ export function SettingsPanel({ feeds, errors, onToggle, onRemove, onAdd, authen
               </h3>
               <ul className="source-list">
                 {rssFeeds.map((feed) => (
-                  <FeedRow key={feed.id} feed={feed} error={errors[feed.id]} onToggle={toggleDraftFeed} onRemove={removeDraftFeed} />
+                  <FeedRow
+                    key={feed.id}
+                    feed={feed}
+                    error={errors[feed.id]}
+                    keywords={draftKeywords.filter((k) => k.feedId === feed.id || k.feedId === null)}
+                    onToggle={toggleDraftFeed}
+                    onRemove={removeDraftFeed}
+                    onRemoveKeyword={removeKeywordFromFeed}
+                    onAddKeyword={addDraftKeyword}
+                  />
                 ))}
                 {rssFeeds.length === 0 && <li className="source-empty">No RSS feeds added yet.</li>}
               </ul>
-              <form onSubmit={(e) => handleSubmit('rss', e)} className="add-source-form">
-                <input
-                  type="text"
-                  placeholder="RSS source name"
-                  value={rssForm.name}
-                  onChange={(e) => setRssForm((f) => ({ ...f, name: e.target.value, error: '' }))}
-                />
-                <input
-                  type="url"
-                  placeholder="RSS / Atom URL"
-                  value={rssForm.url}
-                  onChange={(e) => setRssForm((f) => ({ ...f, url: e.target.value, error: '' }))}
-                />
-                {rssForm.error && <p className="form-error">{rssForm.error}</p>}
-                <button type="submit" className="btn-add">Add RSS feed</button>
-              </form>
             </section>
 
             <section className="source-section">
               <h3 className="source-section-title">
                 <span className="source-icon alert-icon">G</span> Google Alerts
               </h3>
-              <p className="source-hint">
-                In <a href="https://www.google.com/alerts" target="_blank" rel="noopener noreferrer">Google Alerts</a>,
-                set delivery to <em>RSS feed</em> and paste the feed URL below.
-              </p>
               <ul className="source-list">
                 {alertFeeds.map((feed) => (
-                  <FeedRow key={feed.id} feed={feed} error={errors[feed.id]} onToggle={toggleDraftFeed} onRemove={removeDraftFeed} />
+                  <FeedRow
+                    key={feed.id}
+                    feed={feed}
+                    error={errors[feed.id]}
+                    keywords={draftKeywords.filter((k) => k.feedId === feed.id || k.feedId === null)}
+                    onToggle={toggleDraftFeed}
+                    onRemove={removeDraftFeed}
+                    onRemoveKeyword={removeKeywordFromFeed}
+                    onAddKeyword={addDraftKeyword}
+                  />
                 ))}
                 {alertFeeds.length === 0 && <li className="source-empty">No Google Alerts added yet.</li>}
               </ul>
-              <form onSubmit={(e) => handleSubmit('google-alert', e)} className="add-source-form">
+            </section>
+
+            <section className="source-section">
+              <h3 className="source-section-title">Add a source</h3>
+
+              <div className="global-keywords-bar">
+                <span className="global-keywords-label">Global keywords</span>
+                {globalKeywords.map((kw) => (
+                  <KeywordChip key={kw.id} keyword={kw} onRemove={removeDraftKeyword} />
+                ))}
+                <KeywordAddInput onAdd={(kw) => addDraftKeyword(kw, null)} />
+              </div>
+
+              <div className="kind-row">
+                <label className={`kind-btn ${addKind === 'rss' ? 'selected' : ''}`}>
+                  <input
+                    type="radio"
+                    name="add-source-kind"
+                    checked={addKind === 'rss'}
+                    onChange={() => setAddKind('rss')}
+                  />
+                  <span className="source-icon rss-icon">RSS</span> RSS Feed
+                </label>
+                <label className={`kind-btn ${addKind === 'google-alert' ? 'selected' : ''}`}>
+                  <input
+                    type="radio"
+                    name="add-source-kind"
+                    checked={addKind === 'google-alert'}
+                    onChange={() => setAddKind('google-alert')}
+                  />
+                  <span className="source-icon alert-icon">G</span> Google Alert
+                </label>
+              </div>
+
+              <p className="source-hint">
+                {addKind === 'google-alert' ? (
+                  <>
+                    In <a href="https://www.google.com/alerts" target="_blank" rel="noopener noreferrer">Google Alerts</a>,
+                    set delivery to <em>RSS feed</em> and paste the URL below.
+                  </>
+                ) : (
+                  'Paste the RSS or Atom feed URL below.'
+                )}
+              </p>
+
+              <form onSubmit={handleSubmit} className="add-source-form">
                 <input
                   type="text"
-                  placeholder="Google Alert name"
-                  value={alertForm.name}
-                  onChange={(e) => setAlertForm((f) => ({ ...f, name: e.target.value, error: '' }))}
+                  placeholder={addKind === 'rss' ? 'RSS source name' : 'Google Alert name'}
+                  value={sourceForm.name}
+                  onChange={(e) => setSourceForm((f) => ({ ...f, name: e.target.value, error: '' }))}
                 />
                 <input
                   type="url"
-                  placeholder="Google Alert RSS URL"
-                  value={alertForm.url}
-                  onChange={(e) => setAlertForm((f) => ({ ...f, url: e.target.value, error: '' }))}
+                  placeholder={addKind === 'rss' ? 'RSS / Atom URL' : 'Google Alert RSS URL'}
+                  value={sourceForm.url}
+                  onChange={(e) => setSourceForm((f) => ({ ...f, url: e.target.value, error: '' }))}
                 />
-                {alertForm.error && <p className="form-error">{alertForm.error}</p>}
-                <button type="submit" className="btn-add">Add Google Alert</button>
+                <input
+                  type="text"
+                  placeholder="Keyword filter (optional)"
+                  value={sourceForm.keyword}
+                  onChange={(e) => setSourceForm((f) => ({ ...f, keyword: e.target.value, error: '' }))}
+                />
+                <label className="keyword-global-check">
+                  <input
+                    type="checkbox"
+                    checked={sourceForm.global}
+                    onChange={(e) => setSourceForm((f) => ({ ...f, global: e.target.checked }))}
+                  />
+                  Apply to all feeds
+                </label>
+                {sourceForm.error && <p className="form-error">{sourceForm.error}</p>}
+                <button type="submit" className="btn-add">
+                  {addKind === 'rss' ? 'Add RSS feed' : 'Add Google Alert'}
+                </button>
               </form>
             </section>
-
-            <div className="settings-footer">
-              <button type="button" className="settings-footer-btn" onClick={closeWithoutApply}>Cancel</button>
-              <button type="button" className="settings-footer-btn primary" onClick={handleApply}>Apply</button>
-            </div>
           </>
         ) : (
           <section className="settings-login-section">
@@ -303,6 +432,14 @@ export function SettingsPanel({ feeds, errors, onToggle, onRemove, onAdd, authen
               </div>
             </form>
           </section>
+        )}
+        </div>
+
+        {authenticated && (
+          <div className="settings-footer">
+            <button type="button" className="settings-footer-btn" onClick={closeWithoutApply}>Cancel</button>
+            <button type="button" className="settings-footer-btn primary" onClick={handleApply}>Apply</button>
+          </div>
         )}
       </aside>
 
@@ -346,40 +483,98 @@ export function SettingsPanel({ feeds, errors, onToggle, onRemove, onAdd, authen
   );
 }
 
-function FeedRow({ feed, error, onToggle, onRemove }: {
-  feed: Feed;
-  error?: string;
-  onToggle: (id: string) => void;
+function KeywordAddInput({ onAdd }: { onAdd: (keyword: string) => void }) {
+  const [value, setValue] = useState('');
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!value.trim()) return;
+    onAdd(value);
+    setValue('');
+  }
+
+  return (
+    <form className="keyword-add-inline" onSubmit={handleSubmit}>
+      <input
+        type="text"
+        className="keyword-add-input"
+        placeholder="+ Add keyword"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+      />
+      {value.trim() && (
+        <button type="submit" className="keyword-add-confirm" aria-label="Save keyword">
+          ✓
+        </button>
+      )}
+    </form>
+  );
+}
+
+function KeywordChip({ keyword, onRemove }: {
+  keyword: Keyword;
   onRemove: (id: string) => void;
 }) {
   return (
+    <span className="keyword-chip">
+      {keyword.keyword}
+      <button
+        type="button"
+        className="keyword-chip-remove"
+        onClick={() => onRemove(keyword.id)}
+        aria-label={`Remove keyword ${keyword.keyword}`}
+      >
+        ✕
+      </button>
+    </span>
+  );
+}
+
+function FeedRow({ feed, error, keywords, onToggle, onRemove, onRemoveKeyword, onAddKeyword }: {
+  feed: Feed;
+  error?: string;
+  keywords: Keyword[];
+  onToggle: (id: string) => void;
+  onRemove: (id: string) => void;
+  onRemoveKeyword: (keywordId: string, feedId: string) => void;
+  onAddKeyword: (keyword: string, feedId: string | null) => void;
+}) {
+  return (
     <li className={`source-row ${feed.active ? '' : 'inactive'}`}>
-      <div className="source-main">
-        <span className={`source-dot ${feed.active ? 'active' : 'inactive'}`} />
-        <span className="source-name">{feed.name}</span>
+      <div className="source-row-main-line">
+        <div className="source-main">
+          <span className={`source-dot ${feed.active ? 'active' : 'inactive'}`} />
+          <span className="source-name">{feed.name}</span>
+        </div>
+        {error && (
+          <span className="source-error tooltip-anchor" data-tooltip={error}>
+            ⚠
+          </span>
+        )}
+        <div className="source-actions-right">
+          <button
+            className="source-action-btn source-disable-btn tooltip-anchor"
+            onClick={() => onToggle(feed.id)}
+            data-tooltip={feed.active ? 'Disable' : 'Enable'}
+            aria-label={feed.active ? 'Disable' : 'Enable'}
+          >
+            ⟳
+          </button>
+          <button
+            className="source-action-btn source-remove tooltip-anchor"
+            onClick={() => onRemove(feed.id)}
+            data-tooltip="Remove"
+            aria-label="Remove"
+          >
+            ✕
+          </button>
+        </div>
       </div>
-      {error && (
-        <span className="source-error tooltip-anchor" data-tooltip={error}>
-          ⚠
-        </span>
-      )}
-      <div className="source-actions-right">
-        <button
-          className="source-action-btn source-disable-btn tooltip-anchor"
-          onClick={() => onToggle(feed.id)}
-          data-tooltip={feed.active ? 'Disable' : 'Enable'}
-          aria-label={feed.active ? 'Disable' : 'Enable'}
-        >
-          ⟳
-        </button>
-        <button
-          className="source-action-btn source-remove tooltip-anchor"
-          onClick={() => onRemove(feed.id)}
-          data-tooltip="Remove"
-          aria-label="Remove"
-        >
-          ✕
-        </button>
+      <div className="keyword-chip-row">
+        {keywords.map((kw) => (
+          <KeywordChip key={kw.id} keyword={kw} onRemove={(id) => onRemoveKeyword(id, feed.id)} />
+        ))}
+        <KeywordAddInput onAdd={(kw) => onAddKeyword(kw, feed.id)} />
       </div>
     </li>
   );
