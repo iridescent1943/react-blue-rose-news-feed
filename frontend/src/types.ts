@@ -23,6 +23,8 @@ export interface Note {
 }
 
 export interface Article {
+  /** Only set in API mode — the backend's article_id, needed for state/notes calls. */
+  id?: number;
   title: string;
   link: string;
   pubDate: string;
@@ -31,6 +33,9 @@ export interface Article {
   feedId: string;
   feedName: string;
   feedColor: string;
+  /** Only set in API mode — read/saved state, sourced from Postgres. */
+  isRead?: boolean;
+  isSaved?: boolean;
 }
 
 export interface Rss2JsonResponse {
