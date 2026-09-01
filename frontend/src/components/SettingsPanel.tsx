@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Feed, FeedKind, Keyword } from '../types';
 
 interface Props {
@@ -66,10 +66,43 @@ export function SettingsPanel({
   const [sourceForm, setSourceForm] = useState<AddForm>(EMPTY_FORM);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const [loginForm, setLoginForm] = useState<LoginForm>(EMPTY_LOGIN);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showLogoutToast, setShowLogoutToast] = useState(false);
+  const menuWrapRef = useRef<HTMLDivElement | null>(null);
 
-  const rssFeeds = draftFeeds.filter((f) => f.kind === 'rss');
-  const alertFeeds = draftFeeds.filter((f) => f.kind === 'google-alert');
+  useEffect(() => {
+    if (!showLogoutToast) return;
+    const timer = setTimeout(() => setShowLogoutToast(false), 2500);
+    return () => clearTimeout(timer);
+  }, [showLogoutToast]);
+
+  function closeMenu() {
+    setMenuOpen(false);
+    // A just-clicked button keeps DOM focus, which would keep the menu
+    // visible via :focus-within even after menuOpen flips to false.
+    if (document.activeElement instanceof HTMLElement && menuWrapRef.current?.contains(document.activeElement)) {
+      document.activeElement.blur();
+    }
+  }
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    function handleOutsideClick(e: MouseEvent) {
+      if (menuWrapRef.current && !menuWrapRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [menuOpen]);
+
   const globalKeywords = draftKeywords.filter((k) => k.feedId === null);
+  const groupedFeeds = [...draftFeeds].sort((a, b) => {
+    if (a.kind === b.kind) return 0;
+    return a.kind === 'rss' ? -1 : 1;
+  });
 
   function openSettings() {
     setDraftFeeds(feeds);
@@ -107,6 +140,7 @@ export function SettingsPanel({
     onLogout();
     setConfirmState(null);
     setLoginForm(EMPTY_LOGIN);
+    setShowLogoutToast(true);
   }
 
   function toggleDraftFeed(id: string) {
@@ -257,11 +291,32 @@ export function SettingsPanel({
   return (
     <>
       <div className="settings-toolbar">
-        <div className={`settings-menu-wrap ${authenticated ? 'authenticated' : ''}`}>
+        <div
+          className={`settings-menu-wrap ${authenticated ? 'authenticated' : ''} ${menuOpen ? 'menu-open' : ''}`}
+          ref={menuWrapRef}
+        >
           <button
             className={`settings-toggle ${open ? 'open' : ''}`}
-            onClick={() => (open ? closeWithoutApply() : openSettings())}
+            onClick={() => {
+              if (authenticated) {
+                if (open) {
+                  closeWithoutApply();
+                } else if (menuOpen) {
+                  closeMenu();
+                } else {
+                  setMenuOpen(true);
+                }
+                return;
+              }
+              if (open) {
+                closeWithoutApply();
+              } else {
+                openSettings();
+              }
+            }}
             aria-label="Toggle settings"
+            aria-haspopup={authenticated ? 'menu' : undefined}
+            aria-expanded={authenticated ? menuOpen : undefined}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="20" height="20">
               <circle cx="12" cy="12" r="3" />
@@ -270,10 +325,24 @@ export function SettingsPanel({
           </button>
           {authenticated && (
             <div className="settings-hover-menu" role="menu" aria-label="Settings actions">
-              <button type="button" className="settings-hover-item" onClick={openSettings}>
+              <button
+                type="button"
+                className="settings-hover-item"
+                onClick={() => {
+                  closeMenu();
+                  openSettings();
+                }}
+              >
                 Settings
               </button>
-              <button type="button" className="settings-hover-item" onClick={handleLogout}>
+              <button
+                type="button"
+                className="settings-hover-item"
+                onClick={() => {
+                  closeMenu();
+                  handleLogout();
+                }}
+              >
                 Log out
               </button>
             </div>
@@ -283,7 +352,7 @@ export function SettingsPanel({
 
       <aside className={`settings-panel ${open ? 'open' : ''}`}>
         <div className="settings-header">
-          <h2>Settings</h2>
+          <h2>{authenticated ? 'Settings' : 'Log In'}</h2>
           <button className="settings-close" onClick={closeWithoutApply} aria-label="Close settings">✕</button>
         </div>
 
@@ -291,50 +360,7 @@ export function SettingsPanel({
         {authenticated ? (
           <>
             <section className="source-section">
-              <h3 className="source-section-title">
-                <span className="source-icon rss-icon">RSS</span> RSS Feeds
-              </h3>
-              <ul className="source-list">
-                {rssFeeds.map((feed) => (
-                  <FeedRow
-                    key={feed.id}
-                    feed={feed}
-                    error={errors[feed.id]}
-                    keywords={draftKeywords.filter((k) => k.feedId === feed.id || k.feedId === null)}
-                    onToggle={toggleDraftFeed}
-                    onRemove={removeDraftFeed}
-                    onRemoveKeyword={removeKeywordFromFeed}
-                    onAddKeyword={addDraftKeyword}
-                  />
-                ))}
-                {rssFeeds.length === 0 && <li className="source-empty">No RSS feeds added yet.</li>}
-              </ul>
-            </section>
-
-            <section className="source-section">
-              <h3 className="source-section-title">
-                <span className="source-icon alert-icon">G</span> Google Alerts
-              </h3>
-              <ul className="source-list">
-                {alertFeeds.map((feed) => (
-                  <FeedRow
-                    key={feed.id}
-                    feed={feed}
-                    error={errors[feed.id]}
-                    keywords={draftKeywords.filter((k) => k.feedId === feed.id || k.feedId === null)}
-                    onToggle={toggleDraftFeed}
-                    onRemove={removeDraftFeed}
-                    onRemoveKeyword={removeKeywordFromFeed}
-                    onAddKeyword={addDraftKeyword}
-                  />
-                ))}
-                {alertFeeds.length === 0 && <li className="source-empty">No Google Alerts added yet.</li>}
-              </ul>
-            </section>
-
-            <section className="source-section">
-              <h3 className="source-section-title">Add a source</h3>
-
+              <h3 className="source-section-title">Feeds</h3>
               <div className="global-keywords-bar">
                 <span className="global-keywords-label">Global keywords</span>
                 {globalKeywords.map((kw) => (
@@ -342,6 +368,25 @@ export function SettingsPanel({
                 ))}
                 <KeywordAddInput onAdd={(kw) => addDraftKeyword(kw, null)} />
               </div>
+              <ul className="source-list">
+                {groupedFeeds.map((feed) => (
+                  <FeedRow
+                    key={feed.id}
+                    feed={feed}
+                    error={errors[feed.id]}
+                    keywords={draftKeywords.filter((k) => k.feedId === feed.id || k.feedId === null)}
+                    onToggle={toggleDraftFeed}
+                    onRemove={removeDraftFeed}
+                    onRemoveKeyword={removeKeywordFromFeed}
+                    onAddKeyword={addDraftKeyword}
+                  />
+                ))}
+                {groupedFeeds.length === 0 && <li className="source-empty">No feeds added yet.</li>}
+              </ul>
+            </section>
+
+            <section className="source-section">
+              <h3 className="source-section-title">Add a source</h3>
 
               <div className="kind-row">
                 <label className={`kind-btn ${addKind === 'rss' ? 'selected' : ''}`}>
@@ -479,6 +524,12 @@ export function SettingsPanel({
           </section>
         </>
       )}
+
+      {showLogoutToast && (
+        <div className="app-toast" role="status">
+          Logged out successfully
+        </div>
+      )}
     </>
   );
 }
@@ -544,6 +595,12 @@ function FeedRow({ feed, error, keywords, onToggle, onRemove, onRemoveKeyword, o
       <div className="source-row-main-line">
         <div className="source-main">
           <span className={`source-dot ${feed.active ? 'active' : 'inactive'}`} />
+          <span
+            className={`source-icon source-row-icon ${feed.kind === 'rss' ? 'rss-icon' : 'alert-icon'}`}
+            title={feed.kind === 'rss' ? 'RSS feed' : 'Google Alert'}
+          >
+            {feed.kind === 'rss' ? 'RSS' : 'G'}
+          </span>
           <span className="source-name">{feed.name}</span>
         </div>
         {error && (
@@ -553,12 +610,20 @@ function FeedRow({ feed, error, keywords, onToggle, onRemove, onRemoveKeyword, o
         )}
         <div className="source-actions-right">
           <button
-            className="source-action-btn source-disable-btn tooltip-anchor"
+            className="source-action-btn source-toggle-btn tooltip-anchor"
             onClick={() => onToggle(feed.id)}
             data-tooltip={feed.active ? 'Disable' : 'Enable'}
             aria-label={feed.active ? 'Disable' : 'Enable'}
           >
-            ⟳
+            <svg viewBox="0 0 34 18" width="30" height="16" aria-hidden="true">
+              <rect
+                x="1" y="1" width="32" height="16" rx="8"
+                fill={feed.active ? 'currentColor' : 'none'}
+                stroke="currentColor"
+                strokeWidth="1.6"
+              />
+              <circle cx={feed.active ? 25 : 9} cy="9" r="6" fill={feed.active ? '#fff' : 'currentColor'} />
+            </svg>
           </button>
           <button
             className="source-action-btn source-remove tooltip-anchor"

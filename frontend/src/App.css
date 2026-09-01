@@ -1355,7 +1355,8 @@
 }
 
 .settings-menu-wrap.authenticated:hover .settings-hover-menu,
-.settings-menu-wrap.authenticated:focus-within .settings-hover-menu {
+.settings-menu-wrap.authenticated:focus-within .settings-hover-menu,
+.settings-menu-wrap.authenticated.menu-open .settings-hover-menu {
   display: flex;
 }
 
@@ -1554,6 +1555,11 @@
 }
 .rss-icon { background: #f26522; }
 .alert-icon { background: #4285f4; }
+.source-row-icon {
+  width: 16px; height: 16px; border-radius: 3px;
+  font-size: 0.52rem;
+  flex-shrink: 0;
+}
 
 .global-keywords-bar {
   display: flex;
@@ -1563,9 +1569,9 @@
   margin-bottom: 14px;
 }
 .global-keywords-label {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #1f4f8d;
+  font-size: 0.83rem;
+  font-weight: 400;
+  color: var(--text-muted);
   margin-right: 2px;
 }
 
@@ -1611,6 +1617,7 @@
   color: var(--text-muted);
   outline: none;
 }
+.keyword-add-input:placeholder-shown:not(:focus) { text-align: center; padding-right: 6px; }
 .keyword-add-input::placeholder { color: var(--text-muted); opacity: 0.85; transition: opacity 0.15s ease; }
 .keyword-add-input:focus::placeholder { opacity: 0; }
 .keyword-add-input:focus { border-color: var(--rose-mid); border-style: solid; }
@@ -1833,11 +1840,14 @@
   color: #2f6dc2;
 }
 
-.source-disable-btn {
-  font-size: 0.92rem;
+.source-toggle-btn {
+  transition: color 0.15s ease;
+}
+.source-toggle-btn svg circle {
+  transition: cx 0.15s ease;
 }
 
-.source-row.inactive .source-disable-btn {
+.source-row.inactive .source-toggle-btn {
   color: #6f7f95;
 }
 
@@ -2010,6 +2020,30 @@
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   margin-top: 4px;
+}
+
+.app-toast {
+  position: fixed;
+  top: 68px;
+  right: 20px;
+  background: var(--theme-header-border);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  box-shadow: 0 12px 30px rgba(11, 31, 74, 0.18);
+  z-index: 200;
+  animation: app-toast-inout 2.5s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes app-toast-inout {
+  0% { opacity: 0; transform: translateX(10px); }
+  10% { opacity: 1; transform: translateX(0); }
+  85% { opacity: 1; transform: translateX(0); }
+  100% { opacity: 0; transform: translateX(10px); }
 }
 
 /* ── Responsive ── */
