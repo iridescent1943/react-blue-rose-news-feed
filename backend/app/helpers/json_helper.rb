@@ -1,5 +1,7 @@
 module JsonHelper
   def parse_json_body(request)
+    halt_error(415, 'Content-Type must be application/json') unless request.media_type == 'application/json'
+
     body = request.body.read
     request.body.rewind
     JSON.parse(body)
