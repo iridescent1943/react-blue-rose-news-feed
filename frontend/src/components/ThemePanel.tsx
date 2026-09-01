@@ -1,3 +1,5 @@
+import roseSvg from '../assets/rose.svg';
+
 interface Props {
   width?: number;
   activePalette: number;
@@ -44,6 +46,8 @@ export function ThemePanel({ width, activePalette, onPaletteSelect }: Props) {
           aria-label="Blue rose"
           style={{
             background: PALETTE_SWATCHES[activePalette] ?? 'transparent',
+            WebkitMaskImage: `url(${roseSvg})`,
+            maskImage: `url(${roseSvg})`,
           }}
         />
         <div className="theme-divider" aria-hidden="true">✦ ✦ ✦</div>

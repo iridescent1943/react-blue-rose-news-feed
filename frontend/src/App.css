@@ -174,8 +174,6 @@
   aspect-ratio: 4 / 5;
   flex-shrink: 0;
   display: block;
-  -webkit-mask-image: url('/rose.svg');
-  mask-image: url('/rose.svg');
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   -webkit-mask-position: center;
