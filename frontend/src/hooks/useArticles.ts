@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import type { Feed, Article, Rss2JsonResponse } from '../types';
+import { listArticles } from '../data/api/articles';
 
+const IS_API_MODE = import.meta.env.VITE_DATA_BACKEND === 'api';
 const RSS2JSON_API = 'https://api.rss2json.com/v1/api.json';
 const DEV_RSS_PROXY_API = '/api/rss-proxy?url=';
 
@@ -221,6 +223,24 @@ export function useArticles(feeds: Feed[]) {
     let cancelled = false;
     setLoading(true);
     setErrors({});
+
+    if (IS_API_MODE) {
+      listArticles(feeds)
+        .then((result) => {
+          if (cancelled) return;
+          setArticles(result);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          setErrors({ _global: err instanceof Error ? err.message : 'Failed to load articles' });
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
 
     Promise.allSettled(activeFeeds.map((f) => fetchFeed(f))).then((results) => {
       if (cancelled) return;

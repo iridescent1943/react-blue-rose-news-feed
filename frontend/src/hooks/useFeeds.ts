@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Feed, FeedKind } from '../types';
 import { dataStore } from '../data';
+import { listFeeds, createFeed, removeFeed as apiRemoveFeed, setFeedActive } from '../data/api/feeds';
 
+const IS_API_MODE = import.meta.env.VITE_DATA_BACKEND === 'api';
 const STORAGE_KEY = 'news-feeds';
 
 const FEED_COLORS = [
@@ -89,9 +91,12 @@ export function useFeeds() {
 
   useEffect(() => {
     let cancelled = false;
-    dataStore.load<Feed[]>(STORAGE_KEY, DEFAULT_FEEDS).then((stored) => {
+    const load = IS_API_MODE
+      ? listFeeds()
+      : dataStore.load<Feed[]>(STORAGE_KEY, DEFAULT_FEEDS).then(migrateFeeds);
+    load.then((result) => {
       if (cancelled) return;
-      setFeeds(migrateFeeds(stored));
+      setFeeds(result);
       setLoaded(true);
     });
     return () => {
@@ -100,17 +105,27 @@ export function useFeeds() {
   }, []);
 
   useEffect(() => {
-    if (!loaded) return;
+    if (!loaded || IS_API_MODE) return;
     dataStore.save(STORAGE_KEY, feeds);
   }, [feeds, loaded]);
 
-  const addFeed = useCallback((id: string, name: string, url: string, kind: FeedKind) => {
+  const addFeed = useCallback((name: string, url: string, kind: FeedKind) => {
+    const trimmedName = name.trim();
+    const trimmedUrl = url.trim();
+
+    if (IS_API_MODE) {
+      createFeed(trimmedName, trimmedUrl, kind).then((feed) => {
+        setFeeds((prev) => [...prev, feed]);
+      });
+      return;
+    }
+
     setFeeds((prev) => [
       ...prev,
       {
-        id,
-        name: name.trim(),
-        url: url.trim(),
+        id: crypto.randomUUID(),
+        name: trimmedName,
+        url: trimmedUrl,
         active: true,
         color: nextColor(prev),
         kind,
@@ -119,13 +134,28 @@ export function useFeeds() {
   }, []);
 
   const removeFeed = useCallback((id: string) => {
+    if (IS_API_MODE) {
+      apiRemoveFeed(id).then(() => {
+        setFeeds((prev) => prev.filter((f) => f.id !== id));
+      });
+      return;
+    }
     setFeeds((prev) => prev.filter((f) => f.id !== id));
   }, []);
 
   const toggleFeed = useCallback((id: string) => {
+    if (IS_API_MODE) {
+      const current = feeds.find((f) => f.id === id);
+      if (!current) return;
+      setFeedActive(id, !current.active).then((updated) => {
+        setFeeds((prev) => prev.map((f) => (f.id === id ? updated : f)));
+      });
+      return;
+    }
     setFeeds((prev) =>
       prev.map((f) => (f.id === id ? { ...f, active: !f.active } : f))
     );
-  }, []);
+  }, [feeds]);
 
-  return { feeds, addFeed, removeFeed, toggleFeed };}
+  return { feeds, addFeed, removeFeed, toggleFeed, loaded };
+}

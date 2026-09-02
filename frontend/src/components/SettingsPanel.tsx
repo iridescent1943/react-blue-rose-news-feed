@@ -3,10 +3,11 @@ import type { Feed, FeedKind, Keyword } from '../types';
 
 interface Props {
   feeds: Feed[];
+  dataLoaded: boolean;
   errors: Record<string, string>;
   onToggle: (id: string) => void;
   onRemove: (id: string) => void;
-  onAdd: (id: string, name: string, url: string, kind: FeedKind) => void;
+  onAdd: (name: string, url: string, kind: FeedKind) => void;
   keywords: Keyword[];
   onAddKeyword: (keyword: string, feedId: string | null) => void;
   onRemoveKeyword: (id: string) => void;
@@ -48,6 +49,7 @@ function nextColor(feeds: Feed[]): string {
 
 export function SettingsPanel({
   feeds,
+  dataLoaded,
   errors,
   onToggle,
   onRemove,
@@ -105,6 +107,7 @@ export function SettingsPanel({
   });
 
   function openSettings() {
+    if (!dataLoaded) return;
     setDraftFeeds(feeds);
     setDraftKeywords(keywords);
     setAddKind('rss');
@@ -249,7 +252,7 @@ export function SettingsPanel({
 
     draftFeeds.forEach((feed) => {
       if (!originalById.has(feed.id)) {
-        onAdd(feed.id, feed.name, feed.url, feed.kind);
+        onAdd(feed.name, feed.url, feed.kind);
       }
     });
 

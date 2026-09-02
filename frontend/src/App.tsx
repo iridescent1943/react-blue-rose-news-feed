@@ -9,15 +9,18 @@ import { ArticleList } from './components/ArticleList';
 import { ArticlePreview } from './components/ArticlePreview';
 import { dataStore } from './data';
 import { filterArticlesByKeywords } from './utils/filterArticles';
+import { setArticleState } from './data/api/articles';
+import { listNotesForArticle, createNote, updateNote as apiUpdateNote, deleteNote as apiDeleteNote } from './data/api/notes';
 import type { Article, Note } from './types';
 import './App.css';
 
+const IS_API_MODE = import.meta.env.VITE_DATA_BACKEND === 'api';
 const BOOKMARKS_STORAGE_KEY = 'news-bookmarked-article-keys';
 const READ_STORAGE_KEY = 'news-read-article-keys';
 const NOTES_STORAGE_KEY = 'news-article-notes';
 
-function getArticleKey(article: { feedId: string; link: string; pubDate: string }): string {
-  return `${article.feedId}::${article.link}::${article.pubDate}`;
+function getArticleKey(article: { id?: number; feedId: string; link: string; pubDate: string }): string {
+  return article.id !== undefined ? String(article.id) : `${article.feedId}::${article.link}::${article.pubDate}`;
 }
 
 function asStringArray(value: unknown): string[] {
@@ -55,10 +58,14 @@ function getInitialLeftPanelWidth(): number {
 }
 
 export default function App() {
-  const { feeds, addFeed, removeFeed, toggleFeed } = useFeeds();
-  const { keywords, addKeyword, removeKeyword } = useKeywords();
+  const { feeds, addFeed, removeFeed, toggleFeed, loaded: feedsLoaded } = useFeeds();
+  const { keywords, addKeyword, removeKeyword, loaded: keywordsLoaded } = useKeywords();
   const { articles: fetchedArticles, loading, errors } = useArticles(feeds);
-  const articles = filterArticlesByKeywords(fetchedArticles, keywords);
+  const [articleStateOverrides, setArticleStateOverrides] = useState<Record<number, { isRead?: boolean; isSaved?: boolean }>>({});
+  const articlesWithOverrides = IS_API_MODE
+    ? fetchedArticles.map((a) => (a.id !== undefined && articleStateOverrides[a.id] ? { ...a, ...articleStateOverrides[a.id] } : a))
+    : fetchedArticles;
+  const articles = IS_API_MODE ? articlesWithOverrides : filterArticlesByKeywords(fetchedArticles, keywords);
   const [selectedArticleKey, setSelectedArticleKey] = useState<string | null>(null);
   const [selectedTemplateArticle, setSelectedTemplateArticle] = useState<Article | null>(null);
   const [splitRatio, setSplitRatio] = useState<number>(() => {
@@ -79,10 +86,18 @@ export default function App() {
 
   const [bookmarkedKeys, setBookmarkedKeys] = useState<string[]>([]);
   const [readKeys, setReadKeys] = useState<string[]>([]);
-  const [readStateLoaded, setReadStateLoaded] = useState(false);
+  const [readStateLoaded, setReadStateLoaded] = useState(IS_API_MODE);
   const [notesByArticle, setNotesByArticle] = useState<Record<string, Note[]>>({});
-  const [notesLoaded, setNotesLoaded] = useState(false);
+  const [notesLoaded, setNotesLoaded] = useState(IS_API_MODE);
+  const [previewNotes, setPreviewNotes] = useState<Note[]>([]);
   const { authenticated, login, logout } = useAdminAuth();
+
+  const effectiveBookmarkedKeys = IS_API_MODE
+    ? articles.filter((a) => a.isSaved).map(getArticleKey)
+    : bookmarkedKeys;
+  const effectiveReadKeys = IS_API_MODE
+    ? articles.filter((a) => a.isRead).map(getArticleKey)
+    : readKeys;
 
   const activeCount = feeds.filter((f) => f.active).length;
   const selectedArticle = selectedArticleKey
@@ -112,6 +127,7 @@ export default function App() {
   }, [articles, selectedArticleKey, selectedTemplateArticle]);
 
   useEffect(() => {
+    if (IS_API_MODE) return;
     let cancelled = false;
     Promise.all([
       dataStore.load<string[]>(BOOKMARKS_STORAGE_KEY, []),
@@ -128,16 +144,17 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!readStateLoaded) return;
+    if (IS_API_MODE || !readStateLoaded) return;
     dataStore.save(BOOKMARKS_STORAGE_KEY, bookmarkedKeys);
   }, [bookmarkedKeys, readStateLoaded]);
 
   useEffect(() => {
-    if (!readStateLoaded) return;
+    if (IS_API_MODE || !readStateLoaded) return;
     dataStore.save(READ_STORAGE_KEY, readKeys);
   }, [readKeys, readStateLoaded]);
 
   useEffect(() => {
+    if (IS_API_MODE) return;
     let cancelled = false;
     dataStore.load<Record<string, Note[]>>(NOTES_STORAGE_KEY, {}).then((notes) => {
       if (cancelled) return;
@@ -150,17 +167,49 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!notesLoaded) return;
+    if (IS_API_MODE || !notesLoaded) return;
     dataStore.save(NOTES_STORAGE_KEY, notesByArticle);
   }, [notesByArticle, notesLoaded]);
+
+  useEffect(() => {
+    if (!IS_API_MODE) return;
+    if (previewArticle?.id === undefined) {
+      setPreviewNotes([]);
+      return;
+    }
+    let cancelled = false;
+    listNotesForArticle(previewArticle.id).then((result) => {
+      if (!cancelled) setPreviewNotes(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [previewArticle?.id]);
+
+  const effectiveNotes = IS_API_MODE
+    ? previewNotes
+    : previewArticleKey
+      ? notesByArticle[previewArticleKey] ?? []
+      : [];
 
   function handleSelectArticleKey(articleKey: string) {
     setSelectedTemplateArticle(null);
     setSelectedArticleKey(articleKey);
-    setReadKeys((prev) => (prev.includes(articleKey) ? prev : [articleKey, ...prev]));
+    markArticleAsRead(articleKey);
   }
 
   function toggleBookmark(articleKey: string) {
+    if (IS_API_MODE) {
+      const article = articles.find((a) => getArticleKey(a) === articleKey);
+      if (article?.id === undefined) return;
+      const articleId = article.id;
+      const nextSaved = !article.isSaved;
+      setArticleStateOverrides((prev) => ({ ...prev, [articleId]: { ...prev[articleId], isSaved: nextSaved } }));
+      setArticleState(articleId, { is_saved: nextSaved }).catch(() => {
+        setArticleStateOverrides((prev) => ({ ...prev, [articleId]: { ...prev[articleId], isSaved: !nextSaved } }));
+      });
+      return;
+    }
     setBookmarkedKeys((prev) =>
       prev.includes(articleKey)
         ? prev.filter((key) => key !== articleKey)
@@ -169,16 +218,46 @@ export default function App() {
   }
 
   function markArticleAsUnread(articleKey: string) {
+    if (IS_API_MODE) {
+      const article = articles.find((a) => getArticleKey(a) === articleKey);
+      if (article?.id === undefined) return;
+      const articleId = article.id;
+      setArticleStateOverrides((prev) => ({ ...prev, [articleId]: { ...prev[articleId], isRead: false } }));
+      setArticleState(articleId, { is_read: false }).catch(() => {
+        setArticleStateOverrides((prev) => ({ ...prev, [articleId]: { ...prev[articleId], isRead: true } }));
+      });
+      return;
+    }
     setReadKeys((prev) => prev.filter((key) => key !== articleKey));
   }
 
   function markArticleAsRead(articleKey: string) {
+    if (IS_API_MODE) {
+      const article = articles.find((a) => getArticleKey(a) === articleKey);
+      if (article?.id === undefined || article.isRead) return;
+      const articleId = article.id;
+      setArticleStateOverrides((prev) => ({ ...prev, [articleId]: { ...prev[articleId], isRead: true } }));
+      setArticleState(articleId, { is_read: true }).catch(() => {
+        setArticleStateOverrides((prev) => ({ ...prev, [articleId]: { ...prev[articleId], isRead: false } }));
+      });
+      return;
+    }
     setReadKeys((prev) => (prev.includes(articleKey) ? prev : [articleKey, ...prev]));
   }
 
   function addNote(articleKey: string, text: string) {
     const trimmed = text.trim();
     if (!trimmed) return;
+
+    if (IS_API_MODE) {
+      const articleId = Number(articleKey);
+      if (!Number.isFinite(articleId)) return;
+      createNote(articleId, trimmed).then((note) => {
+        setPreviewNotes((prev) => [note, ...prev]);
+      });
+      return;
+    }
+
     const note: Note = { id: crypto.randomUUID(), text: trimmed, createdAt: new Date().toISOString() };
     setNotesByArticle((prev) => ({
       ...prev,
@@ -187,6 +266,12 @@ export default function App() {
   }
 
   function deleteNote(articleKey: string, noteId: string) {
+    if (IS_API_MODE) {
+      apiDeleteNote(noteId).then(() => {
+        setPreviewNotes((prev) => prev.filter((n) => n.id !== noteId));
+      });
+      return;
+    }
     setNotesByArticle((prev) => ({
       ...prev,
       [articleKey]: (prev[articleKey] ?? []).filter((n) => n.id !== noteId),
@@ -196,6 +281,14 @@ export default function App() {
   function editNote(articleKey: string, noteId: string, text: string) {
     const trimmed = text.trim();
     if (!trimmed) return;
+
+    if (IS_API_MODE) {
+      apiUpdateNote(noteId, trimmed).then((updated) => {
+        setPreviewNotes((prev) => prev.map((n) => (n.id === noteId ? updated : n)));
+      });
+      return;
+    }
+
     setNotesByArticle((prev) => ({
       ...prev,
       [articleKey]: (prev[articleKey] ?? []).map((n) => (n.id === noteId ? { ...n, text: trimmed } : n)),
@@ -290,6 +383,7 @@ export default function App() {
         <span className="app-header-brand">Blue Rose News Feed</span>
         <SettingsPanel
           feeds={feeds}
+          dataLoaded={feedsLoaded && keywordsLoaded}
           errors={errors}
           onToggle={toggleFeed}
           onRemove={removeFeed}
@@ -327,8 +421,8 @@ export default function App() {
                 onSelect={handleSelectArticleKey}
                 selectedKey={selectedArticleKey}
                 onSelectTemplate={setSelectedTemplateArticle}
-                bookmarkedKeys={bookmarkedKeys}
-                readKeys={readKeys}
+                bookmarkedKeys={effectiveBookmarkedKeys}
+                readKeys={effectiveReadKeys}
                 onToggleBookmark={toggleBookmark}
                 onMarkAsUnread={markArticleAsUnread}
               />
@@ -346,12 +440,12 @@ export default function App() {
               <ArticlePreview
                 article={previewArticle}
                 articleKey={previewArticleKey}
-                bookmarked={previewArticleKey ? bookmarkedKeys.includes(previewArticleKey) : false}
-                isRead={previewArticleKey ? readKeys.includes(previewArticleKey) : false}
+                bookmarked={previewArticleKey ? effectiveBookmarkedKeys.includes(previewArticleKey) : false}
+                isRead={previewArticleKey ? effectiveReadKeys.includes(previewArticleKey) : false}
                 onToggleBookmark={toggleBookmark}
                 onMarkAsUnread={markArticleAsUnread}
                 onMarkAsRead={markArticleAsRead}
-                notes={previewArticleKey ? notesByArticle[previewArticleKey] ?? [] : []}
+                notes={effectiveNotes}
                 authenticated={authenticated}
                 onLogin={login}
                 onAddNote={addNote}

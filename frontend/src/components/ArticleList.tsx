@@ -15,8 +15,8 @@ interface Props {
   onMarkAsUnread: (articleKey: string) => void;
 }
 
-function getArticleKey(article: { feedId: string; link: string; pubDate: string }): string {
-  return `${article.feedId}::${article.link}::${article.pubDate}`;
+function getArticleKey(article: { id?: number; feedId: string; link: string; pubDate: string }): string {
+  return article.id !== undefined ? String(article.id) : `${article.feedId}::${article.link}::${article.pubDate}`;
 }
 
 const TEMPLATE_ARTICLES = [
