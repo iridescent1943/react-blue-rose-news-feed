@@ -11,8 +11,8 @@ interface Props {
   onAddKeyword: (keyword: string, feedId: string | null) => void;
   onRemoveKeyword: (id: string) => void;
   authenticated: boolean;
-  onLogin: (username: string, password: string) => string | null;
-  onLogout: () => void;
+  onLogin: (username: string, password: string) => Promise<string | null>;
+  onLogout: () => Promise<void>;
 }
 
 interface AddForm {
@@ -124,10 +124,10 @@ export function SettingsPanel({
     setOpen(false);
   }
 
-  function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
 
-    const error = onLogin(loginForm.username, loginForm.password);
+    const error = await onLogin(loginForm.username, loginForm.password);
     if (error) {
       setLoginForm((prev) => ({ ...prev, password: '', error }));
       return;
@@ -136,8 +136,8 @@ export function SettingsPanel({
     setLoginForm(EMPTY_LOGIN);
   }
 
-  function handleLogout() {
-    onLogout();
+  async function handleLogout() {
+    await onLogout();
     setConfirmState(null);
     setLoginForm(EMPTY_LOGIN);
     setShowLogoutToast(true);

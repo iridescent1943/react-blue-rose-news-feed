@@ -11,7 +11,7 @@ interface Props {
   onMarkAsRead: (articleKey: string) => void;
   notes: Note[];
   authenticated: boolean;
-  onLogin: (username: string, password: string) => string | null;
+  onLogin: (username: string, password: string) => Promise<string | null>;
   onAddNote: (articleKey: string, text: string) => void;
   onDeleteNote: (articleKey: string, noteId: string) => void;
   onEditNote: (articleKey: string, noteId: string, text: string) => void;
@@ -37,7 +37,7 @@ function NotesPopover({
   articleKey: string;
   notes: Note[];
   authenticated: boolean;
-  onLogin: (username: string, password: string) => string | null;
+  onLogin: (username: string, password: string) => Promise<string | null>;
   onAddNote: (articleKey: string, text: string) => void;
   onDeleteNote: (articleKey: string, noteId: string) => void;
   onEditNote: (articleKey: string, noteId: string, text: string) => void;
@@ -59,9 +59,9 @@ function NotesPopover({
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, [onClose]);
 
-  function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    const error = onLogin(loginForm.username, loginForm.password);
+    const error = await onLogin(loginForm.username, loginForm.password);
     if (error) {
       setLoginForm((prev) => ({ ...prev, password: '', error }));
       return;
@@ -214,7 +214,7 @@ function PreviewActions({
   onMarkAsRead: (articleKey: string) => void;
   notes: Note[];
   authenticated: boolean;
-  onLogin: (username: string, password: string) => string | null;
+  onLogin: (username: string, password: string) => Promise<string | null>;
   onAddNote: (articleKey: string, text: string) => void;
   onDeleteNote: (articleKey: string, noteId: string) => void;
   onEditNote: (articleKey: string, noteId: string, text: string) => void;
