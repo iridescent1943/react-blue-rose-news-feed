@@ -90,8 +90,17 @@ export default function App() {
   const [notesByArticle, setNotesByArticle] = useState<Record<string, Note[]>>({});
   const [notesLoaded, setNotesLoaded] = useState(IS_API_MODE);
   const [previewNotes, setPreviewNotes] = useState<Note[]>([]);
-  const { authenticated, login, logout } = useAdminAuth();
+  const { authenticated, login, logout, sessionChecked } = useAdminAuth();
   const [authPrompt, setAuthPrompt] = useState<{ reason: string; action: () => void } | null>(null);
+  const [guestToastExpired, setGuestToastExpired] = useState(false);
+
+  useEffect(() => {
+    if (!IS_API_MODE || !sessionChecked || authenticated || guestToastExpired) return;
+    const timer = setTimeout(() => setGuestToastExpired(true), 5000);
+    return () => clearTimeout(timer);
+  }, [sessionChecked, authenticated, guestToastExpired]);
+
+  const showGuestToast = IS_API_MODE && sessionChecked && !authenticated && !guestToastExpired;
 
   function withAuth(reason: string, action: () => void) {
     if (!IS_API_MODE || authenticated) {
@@ -474,6 +483,23 @@ export default function App() {
           </div>
         </main>
       </div>
+
+      {showGuestToast && (
+        <div className="guest-toast" role="status">
+          <span className="guest-toast-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <line x1="12" y1="11" x2="12" y2="16" />
+              <circle cx="12" cy="7.8" r="0.9" fill="currentColor" stroke="none" />
+            </svg>
+          </span>
+          <p className="guest-toast-text">
+            You’re currently viewing the last saved version.
+            <br />
+            Log in to edit and save your changes.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

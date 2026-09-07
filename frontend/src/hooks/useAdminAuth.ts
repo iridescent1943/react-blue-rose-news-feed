@@ -10,10 +10,14 @@ export function useAdminAuth() {
   const [authenticated, setAuthenticated] = useState(
     () => !IS_API_MODE && sessionStorage.getItem(ADMIN_AUTH_STORAGE_KEY) === 'true'
   );
+  const [sessionChecked, setSessionChecked] = useState(!IS_API_MODE);
 
   useEffect(() => {
     if (!IS_API_MODE) return;
-    fetchSession().then(setAuthenticated);
+    fetchSession().then((result) => {
+      setAuthenticated(result);
+      setSessionChecked(true);
+    });
   }, []);
 
   async function login(username: string, password: string): Promise<string | null> {
@@ -47,5 +51,5 @@ export function useAdminAuth() {
     setAuthenticated(false);
   }
 
-  return { authenticated, login, logout };
+  return { authenticated, login, logout, sessionChecked };
 }
