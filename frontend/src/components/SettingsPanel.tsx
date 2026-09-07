@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Feed, FeedKind, Keyword } from '../types';
 
+const IS_API_MODE = import.meta.env.VITE_DATA_BACKEND === 'api';
+
 interface Props {
   feeds: Feed[];
   dataLoaded: boolean;
@@ -14,6 +16,9 @@ interface Props {
   authenticated: boolean;
   onLogin: (username: string, password: string) => Promise<string | null>;
   onLogout: () => Promise<void>;
+  authPromptReason?: string | null;
+  onAuthResolved?: () => void;
+  onAuthDismiss?: () => void;
 }
 
 interface AddForm {
@@ -60,6 +65,9 @@ export function SettingsPanel({
   authenticated,
   onLogin,
   onLogout,
+  authPromptReason,
+  onAuthResolved,
+  onAuthDismiss,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [draftFeeds, setDraftFeeds] = useState<Feed[]>(feeds);
@@ -77,6 +85,14 @@ export function SettingsPanel({
     const timer = setTimeout(() => setShowLogoutToast(false), 2500);
     return () => clearTimeout(timer);
   }, [showLogoutToast]);
+
+  const [prevAuthPromptReason, setPrevAuthPromptReason] = useState(authPromptReason);
+  if (authPromptReason !== prevAuthPromptReason) {
+    setPrevAuthPromptReason(authPromptReason);
+    if (authPromptReason) {
+      setOpen(true);
+    }
+  }
 
   function closeMenu() {
     setMenuOpen(false);
@@ -125,6 +141,9 @@ export function SettingsPanel({
     setConfirmState(null);
     setLoginForm(EMPTY_LOGIN);
     setOpen(false);
+    if (authPromptReason) {
+      onAuthDismiss?.();
+    }
   }
 
   async function handleLogin(e: React.FormEvent) {
@@ -137,6 +156,11 @@ export function SettingsPanel({
     }
 
     setLoginForm(EMPTY_LOGIN);
+
+    if (authPromptReason) {
+      setOpen(false);
+      onAuthResolved?.();
+    }
   }
 
   async function handleLogout() {
@@ -291,17 +315,18 @@ export function SettingsPanel({
     applyChanges();
   }
 
+  const showMenu = IS_API_MODE && authenticated;
+
   return (
     <>
       <div className="settings-toolbar">
         <div
-          className={`settings-menu-wrap ${authenticated ? 'authenticated' : ''} ${menuOpen ? 'menu-open' : ''}`}
+          className={`settings-menu-wrap ${showMenu ? 'authenticated' : ''} ${menuOpen ? 'menu-open' : ''}`}
           ref={menuWrapRef}
         >
           <button
-            className={`settings-toggle ${open ? 'open' : ''}`}
             onClick={() => {
-              if (authenticated) {
+              if (showMenu) {
                 if (open) {
                   closeWithoutApply();
                 } else if (menuOpen) {
@@ -317,16 +342,16 @@ export function SettingsPanel({
                 openSettings();
               }
             }}
-            aria-label="Toggle settings"
-            aria-haspopup={authenticated ? 'menu' : undefined}
-            aria-expanded={authenticated ? menuOpen : undefined}
+            aria-haspopup={showMenu ? 'menu' : undefined}
+            aria-expanded={showMenu ? menuOpen : undefined}
+            className={`settings-toggle ${open ? 'open' : ''}`}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="20" height="20">
               <circle cx="12" cy="12" r="3" />
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
           </button>
-          {authenticated && (
+          {showMenu && (
             <div className="settings-hover-menu" role="menu" aria-label="Settings actions">
               <button
                 type="button"
@@ -459,7 +484,9 @@ export function SettingsPanel({
           </>
         ) : (
           <section className="settings-login-section">
-            <h3 className="source-section-title settings-login-title">Admin access required to edit settings</h3>
+            <h3 className="source-section-title settings-login-title">
+              {authPromptReason ?? 'Admin access required to edit settings'}
+            </h3>
             <form onSubmit={handleLogin} className="settings-login-form">
               <input
                 type="text"

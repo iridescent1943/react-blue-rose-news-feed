@@ -91,6 +91,15 @@ export default function App() {
   const [notesLoaded, setNotesLoaded] = useState(IS_API_MODE);
   const [previewNotes, setPreviewNotes] = useState<Note[]>([]);
   const { authenticated, login, logout } = useAdminAuth();
+  const [authPrompt, setAuthPrompt] = useState<{ reason: string; action: () => void } | null>(null);
+
+  function withAuth(reason: string, action: () => void) {
+    if (!IS_API_MODE || authenticated) {
+      action();
+      return;
+    }
+    setAuthPrompt({ reason, action });
+  }
 
   const effectiveBookmarkedKeys = IS_API_MODE
     ? articles.filter((a) => a.isSaved).map(getArticleKey)
@@ -199,50 +208,53 @@ export default function App() {
   }
 
   function toggleBookmark(articleKey: string) {
-    if (IS_API_MODE) {
-      const article = articles.find((a) => getArticleKey(a) === articleKey);
-      if (article?.id === undefined) return;
-      const articleId = article.id;
-      const nextSaved = !article.isSaved;
-      setArticleStateOverrides((prev) => ({ ...prev, [articleId]: { ...prev[articleId], isSaved: nextSaved } }));
-      setArticleState(articleId, { is_saved: nextSaved }).catch(() => {
-        setArticleStateOverrides((prev) => ({ ...prev, [articleId]: { ...prev[articleId], isSaved: !nextSaved } }));
-      });
-      return;
-    }
-    setBookmarkedKeys((prev) =>
-      prev.includes(articleKey)
-        ? prev.filter((key) => key !== articleKey)
-        : [articleKey, ...prev]
-    );
+    withAuth('Admin access required to save article', () => {
+      if (IS_API_MODE) {
+        const article = articles.find((a) => getArticleKey(a) === articleKey);
+        if (article?.id === undefined) return;
+        const articleId = article.id;
+        const nextSaved = !article.isSaved;
+        setArticleStateOverrides((prev) => ({ ...prev, [articleId]: { ...prev[articleId], isSaved: nextSaved } }));
+        setArticleState(articleId, { is_saved: nextSaved }).catch(() => {
+          setArticleStateOverrides((prev) => ({ ...prev, [articleId]: { ...prev[articleId], isSaved: !nextSaved } }));
+        });
+        return;
+      }
+      setBookmarkedKeys((prev) =>
+        prev.includes(articleKey)
+          ? prev.filter((key) => key !== articleKey)
+          : [articleKey, ...prev]
+      );
+    });
   }
 
-  function markArticleAsUnread(articleKey: string) {
+  function setArticleReadState(articleKey: string, isRead: boolean) {
     if (IS_API_MODE) {
       const article = articles.find((a) => getArticleKey(a) === articleKey);
-      if (article?.id === undefined) return;
+      if (article?.id === undefined || article.isRead === isRead) return;
       const articleId = article.id;
-      setArticleStateOverrides((prev) => ({ ...prev, [articleId]: { ...prev[articleId], isRead: false } }));
-      setArticleState(articleId, { is_read: false }).catch(() => {
-        setArticleStateOverrides((prev) => ({ ...prev, [articleId]: { ...prev[articleId], isRead: true } }));
+      setArticleStateOverrides((prev) => ({ ...prev, [articleId]: { ...prev[articleId], isRead } }));
+      setArticleState(articleId, { is_read: isRead }).catch(() => {
+        setArticleStateOverrides((prev) => ({ ...prev, [articleId]: { ...prev[articleId], isRead: !isRead } }));
       });
       return;
     }
-    setReadKeys((prev) => prev.filter((key) => key !== articleKey));
+    setReadKeys((prev) => {
+      const has = prev.includes(articleKey);
+      if (isRead) return has ? prev : [articleKey, ...prev];
+      return has ? prev.filter((key) => key !== articleKey) : prev;
+    });
   }
 
   function markArticleAsRead(articleKey: string) {
-    if (IS_API_MODE) {
-      const article = articles.find((a) => getArticleKey(a) === articleKey);
-      if (article?.id === undefined || article.isRead) return;
-      const articleId = article.id;
-      setArticleStateOverrides((prev) => ({ ...prev, [articleId]: { ...prev[articleId], isRead: true } }));
-      setArticleState(articleId, { is_read: true }).catch(() => {
-        setArticleStateOverrides((prev) => ({ ...prev, [articleId]: { ...prev[articleId], isRead: false } }));
-      });
-      return;
-    }
-    setReadKeys((prev) => (prev.includes(articleKey) ? prev : [articleKey, ...prev]));
+    setArticleReadState(articleKey, true);
+  }
+
+  function toggleReadState(articleKey: string) {
+    withAuth('Admin access required to update read state', () => {
+      const isRead = effectiveReadKeys.includes(articleKey);
+      setArticleReadState(articleKey, !isRead);
+    });
   }
 
   function addNote(articleKey: string, text: string) {
@@ -391,9 +403,16 @@ export default function App() {
           keywords={keywords}
           onAddKeyword={addKeyword}
           onRemoveKeyword={removeKeyword}
-          authenticated={authenticated}
+          authenticated={!IS_API_MODE || authenticated}
           onLogin={login}
           onLogout={logout}
+          authPromptReason={authPrompt?.reason ?? null}
+          onAuthResolved={() => {
+            const action = authPrompt?.action;
+            setAuthPrompt(null);
+            action?.();
+          }}
+          onAuthDismiss={() => setAuthPrompt(null)}
         />
       </header>
 
@@ -424,7 +443,7 @@ export default function App() {
                 bookmarkedKeys={effectiveBookmarkedKeys}
                 readKeys={effectiveReadKeys}
                 onToggleBookmark={toggleBookmark}
-                onMarkAsUnread={markArticleAsUnread}
+                onToggleReadState={toggleReadState}
               />
             </section>
             <div
@@ -443,10 +462,9 @@ export default function App() {
                 bookmarked={previewArticleKey ? effectiveBookmarkedKeys.includes(previewArticleKey) : false}
                 isRead={previewArticleKey ? effectiveReadKeys.includes(previewArticleKey) : false}
                 onToggleBookmark={toggleBookmark}
-                onMarkAsUnread={markArticleAsUnread}
-                onMarkAsRead={markArticleAsRead}
+                onToggleReadState={toggleReadState}
                 notes={effectiveNotes}
-                authenticated={authenticated}
+                authenticated={!IS_API_MODE || authenticated}
                 onLogin={login}
                 onAddNote={addNote}
                 onDeleteNote={deleteNote}

@@ -7,8 +7,7 @@ interface Props {
   bookmarked: boolean;
   isRead: boolean;
   onToggleBookmark: (articleKey: string) => void;
-  onMarkAsUnread: (articleKey: string) => void;
-  onMarkAsRead: (articleKey: string) => void;
+  onToggleReadState: (articleKey: string) => void;
   notes: Note[];
   authenticated: boolean;
   onLogin: (username: string, password: string) => Promise<string | null>;
@@ -22,6 +21,103 @@ function formatNoteDate(iso: string): string {
   if (isNaN(d.getTime())) return '';
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
     ' ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
+function LoginForm({
+  hint,
+  onLogin,
+  onSuccess,
+}: {
+  hint: string;
+  onLogin: (username: string, password: string) => Promise<string | null>;
+  onSuccess?: () => void;
+}) {
+  const [loginForm, setLoginForm] = useState({ username: '', password: '', error: '' });
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    const error = await onLogin(loginForm.username, loginForm.password);
+    if (error) {
+      setLoginForm((prev) => ({ ...prev, password: '', error }));
+      return;
+    }
+    setLoginForm({ username: '', password: '', error: '' });
+    onSuccess?.();
+  }
+
+  return (
+    <form onSubmit={handleLogin} className="settings-login-form notes-login-form">
+      <p className="notes-login-hint">{hint}</p>
+      <input
+        type="text"
+        placeholder="Username"
+        value={loginForm.username}
+        onChange={(e) => setLoginForm((prev) => ({ ...prev, username: e.target.value, error: '' }))}
+      />
+      <input
+        type="password"
+        placeholder="Password"
+        value={loginForm.password}
+        onChange={(e) => setLoginForm((prev) => ({ ...prev, password: e.target.value, error: '' }))}
+      />
+      {loginForm.error && <p className="form-error">{loginForm.error}</p>}
+      <button type="submit" className="settings-footer-btn primary">Log in</button>
+    </form>
+  );
+}
+
+function InlineAuthAction({
+  authenticated,
+  onLogin,
+  hint,
+  action,
+  children,
+}: {
+  authenticated: boolean;
+  onLogin: (username: string, password: string) => Promise<string | null>;
+  hint: string;
+  action: () => void;
+  children: (onClick: () => void) => React.ReactNode;
+}) {
+  const [loginOpen, setLoginOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!loginOpen) return;
+    function onPointerDown(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setLoginOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [loginOpen]);
+
+  function handleClick() {
+    if (!authenticated) {
+      setLoginOpen((prev) => !prev);
+      return;
+    }
+    action();
+  }
+
+  return (
+    <div className="notes-menu-wrap" ref={wrapRef}>
+      {children(handleClick)}
+      {loginOpen && (
+        <div className="notes-popover" role="dialog" aria-label="Log in">
+          <LoginForm
+            hint={hint}
+            onLogin={onLogin}
+            onSuccess={() => {
+              setLoginOpen(false);
+              action();
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
 }
 
 function NotesPopover({
@@ -44,7 +140,6 @@ function NotesPopover({
   onClose: () => void;
 }) {
   const [draft, setDraft] = useState('');
-  const [loginForm, setLoginForm] = useState({ username: '', password: '', error: '' });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState('');
   const popoverRef = useRef<HTMLDivElement | null>(null);
@@ -58,16 +153,6 @@ function NotesPopover({
     document.addEventListener('mousedown', onPointerDown);
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, [onClose]);
-
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    const error = await onLogin(loginForm.username, loginForm.password);
-    if (error) {
-      setLoginForm((prev) => ({ ...prev, password: '', error }));
-      return;
-    }
-    setLoginForm({ username: '', password: '', error: '' });
-  }
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -97,7 +182,7 @@ function NotesPopover({
   return (
     <div className="notes-popover" ref={popoverRef} role="dialog" aria-label="Notes">
       <div className="notes-list">
-        {notes.length === 0 && <p className="notes-empty">No notes yet.</p>}
+        {notes.length === 0 && <p className="notes-empty">No notes yet</p>}
         {notes.map((note) =>
           editingId === note.id ? (
             <form key={note.id} className="note-item note-edit-form" onSubmit={(e) => handleSaveEdit(e, note.id)}>
@@ -170,23 +255,7 @@ function NotesPopover({
           </button>
         </form>
       ) : (
-        <form onSubmit={handleLogin} className="settings-login-form notes-login-form">
-          <p className="notes-login-hint">Log in to add a note.</p>
-          <input
-            type="text"
-            placeholder="Username"
-            value={loginForm.username}
-            onChange={(e) => setLoginForm((prev) => ({ ...prev, username: e.target.value, error: '' }))}
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={loginForm.password}
-            onChange={(e) => setLoginForm((prev) => ({ ...prev, password: e.target.value, error: '' }))}
-          />
-          {loginForm.error && <p className="form-error">{loginForm.error}</p>}
-          <button type="submit" className="settings-footer-btn primary">Log in</button>
-        </form>
+        <LoginForm hint="Log in to add a note" onLogin={onLogin} />
       )}
     </div>
   );
@@ -197,8 +266,7 @@ function PreviewActions({
   bookmarked,
   isRead,
   onToggleBookmark,
-  onMarkAsUnread,
-  onMarkAsRead,
+  onToggleReadState,
   notes,
   authenticated,
   onLogin,
@@ -210,8 +278,7 @@ function PreviewActions({
   bookmarked: boolean;
   isRead: boolean;
   onToggleBookmark: (articleKey: string) => void;
-  onMarkAsUnread: (articleKey: string) => void;
-  onMarkAsRead: (articleKey: string) => void;
+  onToggleReadState: (articleKey: string) => void;
   notes: Note[];
   authenticated: boolean;
   onLogin: (username: string, password: string) => Promise<string | null>;
@@ -230,58 +297,78 @@ function PreviewActions({
 
   return (
     <div className="preview-actions-row">
-      <button
-        type="button"
-        className={`preview-action-btn tooltip-anchor ${bookmarked ? 'active' : ''}`}
-        aria-pressed={bookmarked}
-        aria-label={bookmarked ? 'Saved' : 'Save'}
-        data-tooltip={bookmarked ? 'Saved' : 'Save'}
-        disabled={disabled}
-        onClick={() => articleKey && onToggleBookmark(articleKey)}
+      <InlineAuthAction
+        key={`save-${articleKey ?? 'none'}`}
+        authenticated={authenticated}
+        onLogin={onLogin}
+        hint="Log in to save article"
+        action={() => articleKey && onToggleBookmark(articleKey)}
       >
-        <svg
-          className="preview-action-icon"
-          viewBox="0 0 24 24"
-          width="19"
-          height="19"
-          aria-hidden="true"
-        >
-          <path
-            d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"
-            fill={bookmarked ? 'currentColor' : 'transparent'}
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
-      <button
-        type="button"
-        className={`preview-action-btn tooltip-anchor ${isRead ? '' : 'active'}`}
-        aria-pressed={!isRead}
-        aria-label={isRead ? 'Mark as unread' : 'Mark as read'}
-        data-tooltip={isRead ? 'Mark as unread' : 'Mark as read'}
-        disabled={disabled}
-        onClick={() => articleKey && (isRead ? onMarkAsUnread(articleKey) : onMarkAsRead(articleKey))}
+        {(onClick) => (
+          <button
+            type="button"
+            className={`preview-action-btn tooltip-anchor ${bookmarked ? 'active' : ''}`}
+            aria-pressed={bookmarked}
+            aria-label={bookmarked ? 'Saved' : 'Save'}
+            data-tooltip={bookmarked ? 'Saved' : 'Save'}
+            disabled={disabled}
+            onClick={onClick}
+          >
+            <svg
+              className="preview-action-icon"
+              viewBox="0 0 24 24"
+              width="19"
+              height="19"
+              aria-hidden="true"
+            >
+              <path
+                d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"
+                fill={bookmarked ? 'currentColor' : 'transparent'}
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        )}
+      </InlineAuthAction>
+      <InlineAuthAction
+        key={`read-${articleKey ?? 'none'}`}
+        authenticated={authenticated}
+        onLogin={onLogin}
+        hint="Log in to update read state"
+        action={() => articleKey && onToggleReadState(articleKey)}
       >
-        <svg
-          className="preview-action-icon"
-          viewBox="0 0 24 24"
-          width="19"
-          height="19"
-          aria-hidden="true"
-        >
-          <circle
-            cx="12"
-            cy="12"
-            r="7"
-            fill={isRead ? 'transparent' : 'currentColor'}
-            stroke="currentColor"
-            strokeWidth="1.8"
-          />
-        </svg>
-      </button>
+        {(onClick) => (
+          <button
+            type="button"
+            className={`preview-action-btn tooltip-anchor ${isRead ? '' : 'active'}`}
+            aria-pressed={!isRead}
+            aria-label={isRead ? 'Mark as unread' : 'Mark as read'}
+            data-tooltip={isRead ? 'Mark as unread' : 'Mark as read'}
+            disabled={disabled}
+            onClick={onClick}
+          >
+            <svg
+              className="preview-action-icon"
+              viewBox="0 0 24 24"
+              width="19"
+              height="19"
+              aria-hidden="true"
+            >
+              <circle
+                cx="12"
+                cy="12"
+                r="7"
+                fill={isRead ? 'transparent' : 'currentColor'}
+                stroke="currentColor"
+                strokeWidth="1.8"
+              />
+            </svg>
+          </button>
+        )}
+      </InlineAuthAction>
       <div className="notes-menu-wrap">
         <button
           type="button"
@@ -387,8 +474,7 @@ export function ArticlePreview({
   bookmarked,
   isRead,
   onToggleBookmark,
-  onMarkAsUnread,
-  onMarkAsRead,
+  onToggleReadState,
   notes,
   authenticated,
   onLogin,
@@ -456,8 +542,7 @@ export function ArticlePreview({
         bookmarked={bookmarked}
         isRead={isRead}
         onToggleBookmark={onToggleBookmark}
-        onMarkAsUnread={onMarkAsUnread}
-        onMarkAsRead={onMarkAsRead}
+        onToggleReadState={onToggleReadState}
         notes={notes}
         authenticated={authenticated}
         onLogin={onLogin}

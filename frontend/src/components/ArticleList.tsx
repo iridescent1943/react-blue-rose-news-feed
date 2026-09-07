@@ -12,7 +12,7 @@ interface Props {
   bookmarkedKeys: string[];
   readKeys: string[];
   onToggleBookmark: (articleKey: string) => void;
-  onMarkAsUnread: (articleKey: string) => void;
+  onToggleReadState: (articleKey: string) => void;
 }
 
 function getArticleKey(article: { id?: number; feedId: string; link: string; pubDate: string }): string {
@@ -175,7 +175,7 @@ export function ArticleList({
   bookmarkedKeys,
   readKeys,
   onToggleBookmark,
-  onMarkAsUnread,
+  onToggleReadState,
 }: Props) {
   const [selectedSource, setSelectedSource] = useState('all');
   const [selectedTime, setSelectedTime] = useState<'all' | 'today' | 'days7' | 'days30'>('all');
@@ -346,7 +346,7 @@ export function ArticleList({
             isRead={readKeys.includes(articleKey)}
             bookmarked={bookmarkedKeys.includes(articleKey)}
             onToggleBookmark={() => onToggleBookmark(articleKey)}
-            onMarkAsUnread={() => onMarkAsUnread(articleKey)}
+            onToggleReadState={() => onToggleReadState(articleKey)}
           />
         ))}
       </div>

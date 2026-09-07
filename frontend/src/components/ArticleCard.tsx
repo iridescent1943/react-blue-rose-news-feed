@@ -8,7 +8,7 @@ interface Props {
   isRead: boolean;
   bookmarked: boolean;
   onToggleBookmark: () => void;
-  onMarkAsUnread: () => void;
+  onToggleReadState: () => void;
 }
 
 function formatDate(dateStr: string): string {
@@ -24,7 +24,7 @@ export function ArticleCard({
   isRead,
   bookmarked,
   onToggleBookmark,
-  onMarkAsUnread,
+  onToggleReadState,
 }: Props) {
   const [thumbFailed, setThumbFailed] = useState(false);
   const [previewBookmarkState, setPreviewBookmarkState] = useState<boolean | null>(null);
@@ -55,13 +55,11 @@ export function ArticleCard({
             <button
               type="button"
               className={`read-state-dot tooltip-anchor ${isRead ? 'read' : 'unread'}`}
-              aria-label={isRead ? 'Mark article as unread' : 'New article'}
-              data-tooltip={isRead ? 'Mark as unread' : 'New article'}
+              aria-label={isRead ? 'Mark as unread' : 'Mark as read'}
+              data-tooltip={isRead ? 'Mark as unread' : 'Mark as read'}
               onClick={(e) => {
                 e.stopPropagation();
-                if (isRead) {
-                  onMarkAsUnread();
-                }
+                onToggleReadState();
               }}
             />
             <button
