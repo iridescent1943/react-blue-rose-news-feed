@@ -10,13 +10,13 @@ import {
   aws_cloudfront as cloudfront,
   aws_cloudfront_origins as origins,
   aws_iam as iam,
+  aws_s3 as s3,
   aws_secretsmanager as secretsmanager,
 } from 'aws-cdk-lib';
 
 const DB_NAME = 'newsfeed';
 const DB_USERNAME = 'newsfeed';
 const BACKEND_CONTAINER_PORT = 3000;
-const FRONTEND_CONTAINER_PORT = 80;
 const GITHUB_REPO = 'iridescent1943/react-blue-rose-news-feed';
 const GITHUB_DEPLOY_BRANCH = 'main';
 
@@ -78,13 +78,21 @@ export class InfraStack extends cdk.Stack {
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
     });
 
+    // S3 bucket for the built React app - Frontend
+    const frontendBucket = new s3.Bucket(this, 'FrontendBucket', {
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+    });
+
     // CloudFront - Shared
     const albOrigin = new origins.HttpOrigin(alb.loadBalancerDnsName, {
       protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
     });
     const distribution = new cloudfront.Distribution(this, 'Distribution', {
+      defaultRootObject: 'index.html',
       defaultBehavior: {
-        origin: albOrigin,
+        origin: origins.S3BucketOrigin.withOriginAccessControl(frontendBucket),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
       },
@@ -97,56 +105,10 @@ export class InfraStack extends cdk.Stack {
           allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
         },
       },
-    });
-
-    // ECR repo, Fargate service and target group for the React app - Frontend
-    const frontendRepo = new ecr.Repository(this, 'FrontendRepo', {
-      repositoryName: 'bluerose-frontend',
-      lifecycleRules: [{ maxImageCount: 10 }],
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      emptyOnDelete: true,
-    });
-
-    const frontendServiceSecurityGroup = new ec2.SecurityGroup(this, 'FrontendServiceSecurityGroup', {
-      vpc,
-      description: 'Allow traffic from the ALB to the frontend service',
-    });
-    frontendServiceSecurityGroup.addIngressRule(
-      albSecurityGroup,
-      ec2.Port.tcp(FRONTEND_CONTAINER_PORT),
-      'ALB to frontend',
-    );
-
-    const frontendTaskDefinition = new ecs.FargateTaskDefinition(this, 'FrontendTaskDef', {
-      cpu: 256,
-      memoryLimitMiB: 512,
-    });
-    frontendTaskDefinition.addContainer('FrontendContainer', {
-      image: ecs.ContainerImage.fromEcrRepository(frontendRepo, 'latest'),
-      portMappings: [{ containerPort: FRONTEND_CONTAINER_PORT }],
-      logging: ecs.LogDrivers.awsLogs({
-        streamPrefix: 'frontend',
-        logRetention: logs.RetentionDays.TWO_WEEKS,
-      }),
-    });
-
-    const frontendService = new ecs.FargateService(this, 'FrontendService', {
-      cluster: ecsCluster,
-      taskDefinition: frontendTaskDefinition,
-      desiredCount: 0,
-      assignPublicIp: true,
-      vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
-      securityGroups: [frontendServiceSecurityGroup],
-      circuitBreaker: { rollback: true },
-    });
-
-    const frontendTargetGroup = new elbv2.ApplicationTargetGroup(this, 'FrontendTargetGroup', {
-      vpc,
-      port: FRONTEND_CONTAINER_PORT,
-      protocol: elbv2.ApplicationProtocol.HTTP,
-      targetType: elbv2.TargetType.IP,
-      targets: [frontendService],
-      healthCheck: { path: '/' },
+      errorResponses: [
+        { httpStatus: 403, responseHttpStatus: 200, responsePagePath: '/index.html' },
+        { httpStatus: 404, responseHttpStatus: 200, responsePagePath: '/index.html' },
+      ],
     });
 
     // ECR repo, Fargate service and target group for the Sinatra API - Backend
@@ -219,16 +181,11 @@ export class InfraStack extends cdk.Stack {
       healthCheck: { path: '/health' },
     });
 
-    // Listener - Routes /api/* to backend, everything else to frontend - Shared
-    const listener = alb.addListener('HttpListener', {
+    // Listener - The ALB only ever receives /api/* traffic from CloudFront
+    alb.addListener('HttpListener', {
       port: 80,
       open: true,
-      defaultTargetGroups: [frontendTargetGroup],
-    });
-    listener.addAction('BackendApiRouting', {
-      priority: 10,
-      conditions: [elbv2.ListenerCondition.pathPatterns(['/api/*'])],
-      action: elbv2.ListenerAction.forward([backendTargetGroup]),
+      defaultTargetGroups: [backendTargetGroup],
     });
 
     // GitHub Actions OIDC
@@ -238,25 +195,32 @@ export class InfraStack extends cdk.Stack {
     });
 
     const githubDeployRole = new iam.Role(this, 'GitHubActionsDeployRole', {
-      description: 'Assumed by GitHub Actions to push images to ECR and redeploy the ECS services',
+      description: 'Assumed by GitHub Actions to sync the frontend to S3 and to build/deploy the backend',
       assumedBy: new iam.WebIdentityPrincipal(githubOidcProvider.openIdConnectProviderArn, {
         StringEquals: { 'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com' },
         StringLike: { 'token.actions.githubusercontent.com:sub': `repo:${GITHUB_REPO}:ref:refs/heads/${GITHUB_DEPLOY_BRANCH}` },
       }),
     });
-    frontendRepo.grantPullPush(githubDeployRole);
+    frontendBucket.grantReadWrite(githubDeployRole);
+    githubDeployRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ['cloudfront:CreateInvalidation'],
+        resources: [`arn:aws:cloudfront::${this.account}:distribution/${distribution.distributionId}`],
+      }),
+    );
     backendRepo.grantPullPush(githubDeployRole);
     githubDeployRole.addToPolicy(
       new iam.PolicyStatement({
         actions: ['ecs:UpdateService', 'ecs:DescribeServices'],
-        resources: [frontendService.serviceArn, backendService.serviceArn],
+        resources: [backendService.serviceArn],
       }),
     );
 
-    // Outputs - HTTPS URL, ALB DNS name, both ECR repo URIs and the GitHub Actions role ARN
+    // Outputs - HTTPS URL, ALB DNS name, frontend bucket, distribution id, backend repo URI and the GitHub Actions role ARN
     new cdk.CfnOutput(this, 'SiteUrl', { value: `https://${distribution.distributionDomainName}` });
     new cdk.CfnOutput(this, 'AlbDnsName', { value: alb.loadBalancerDnsName });
-    new cdk.CfnOutput(this, 'FrontendRepoUri', { value: frontendRepo.repositoryUri });
+    new cdk.CfnOutput(this, 'FrontendBucketName', { value: frontendBucket.bucketName });
+    new cdk.CfnOutput(this, 'DistributionId', { value: distribution.distributionId });
     new cdk.CfnOutput(this, 'BackendRepoUri', { value: backendRepo.repositoryUri });
     new cdk.CfnOutput(this, 'GitHubActionsDeployRoleArn', { value: githubDeployRole.roleArn });
   }
