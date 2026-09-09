@@ -18,7 +18,8 @@ class ApplicationController < Sinatra::Base
     end
 
     set :protection, permitted_origins: allowed_origins
-    set :host_authorization, permitted_hosts: allowed_hosts
+    set :host_authorization,
+        permitted_hosts: allowed_hosts + [IPAddr.new('0.0.0.0/0'), IPAddr.new('::/0')]
   end
 
   before do
