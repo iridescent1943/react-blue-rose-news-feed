@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "build:aws": "tsc -b && VITE_DATA_BACKEND=api vite build",
+    "build:gh-pages": "tsc -b && vite build --base=/react-blue-rose-news-feed/",
     "lint": "eslint .",
     "preview": "vite preview"
   },
