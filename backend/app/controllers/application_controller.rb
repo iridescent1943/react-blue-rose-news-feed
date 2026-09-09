@@ -6,6 +6,7 @@ class ApplicationController < Sinatra::Base
   helpers AuthHelper
 
   allowed_origins = ENV.fetch('ALLOWED_ORIGINS', '').split(',').map(&:strip).reject(&:empty?)
+  allowed_hosts = allowed_origins.map { |origin| URI.parse(origin).host }.compact
 
   configure do
     use Rack::Cors do
@@ -17,6 +18,7 @@ class ApplicationController < Sinatra::Base
     end
 
     set :protection, permitted_origins: allowed_origins
+    set :host_authorization, permitted_hosts: allowed_hosts
   end
 
   before do
