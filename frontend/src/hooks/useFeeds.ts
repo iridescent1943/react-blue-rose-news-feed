@@ -98,6 +98,9 @@ export function useFeeds() {
       if (cancelled) return;
       setFeeds(result);
       setLoaded(true);
+    }).catch(() => {
+      if (cancelled) return;
+      setLoaded(true);
     });
     return () => {
       cancelled = true;

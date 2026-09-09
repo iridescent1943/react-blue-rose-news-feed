@@ -17,6 +17,9 @@ export function useKeywords() {
       if (cancelled) return;
       setKeywords(stored);
       setLoaded(true);
+    }).catch(() => {
+      if (cancelled) return;
+      setLoaded(true);
     });
     return () => {
       cancelled = true;

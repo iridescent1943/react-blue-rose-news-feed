@@ -17,6 +17,8 @@ export function useAdminAuth() {
     fetchSession().then((result) => {
       setAuthenticated(result);
       setSessionChecked(true);
+    }).catch(() => {
+      setSessionChecked(true);
     });
   }, []);
 
