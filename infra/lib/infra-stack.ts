@@ -153,7 +153,7 @@ export class InfraStack extends cdk.Stack {
         DB_HOST: database.instanceEndpoint.hostname,
         DB_PORT: database.instanceEndpoint.port.toString(),
         DB_NAME,
-        CORS_ORIGIN: `https://${distribution.distributionDomainName}`,
+        ALLOWED_ORIGINS: `https://${distribution.distributionDomainName}`,
       },
       secrets: {
         DB_USERNAME: ecs.Secret.fromSecretsManager(database.secret!, 'username'),
