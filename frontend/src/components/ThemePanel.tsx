@@ -1,10 +1,29 @@
-import roseSvg from '../assets/rose.svg';
+import rosesRed from '../assets/roses-red.webp';
+import rosesPink from '../assets/roses-pink.webp';
+import rosesOrange from '../assets/roses-orange.webp';
+import rosesYellow from '../assets/roses-yellow.webp';
+import rosesGreen from '../assets/roses-green.webp';
+import rosesBlue from '../assets/roses-blue.webp';
+import rosesPurple from '../assets/roses-purple.webp';
 
 interface Props {
   width?: number;
   activePalette: number;
   onPaletteSelect: (index: number) => void;
 }
+
+const PALETTE_NAMES = ['red', 'pink', 'orange', 'yellow', 'green', 'blue', 'purple'];
+
+// Real photos, indexed to match PALETTE_SWATCHES.
+const PALETTE_IMAGES = [
+  rosesRed,
+  rosesPink,
+  rosesOrange,
+  rosesYellow,
+  rosesGreen,
+  rosesBlue,
+  rosesPurple,
+];
 
 const PALETTE_SWATCHES = [
   'linear-gradient(135deg, #ff6b6b 0%, #c0392b 100%)',  // red
@@ -40,15 +59,10 @@ export function ThemePanel({ width, activePalette, onPaletteSelect }: Props) {
   return (
     <aside className="theme-panel" style={width ? { width: `${width}px` } : undefined}>
       <div className="theme-panel-inner">
-        <div
-          className="rose-svg"
-          role="img"
-          aria-label="Blue rose"
-          style={{
-            background: PALETTE_SWATCHES[activePalette] ?? 'transparent',
-            WebkitMaskImage: `url(${roseSvg})`,
-            maskImage: `url(${roseSvg})`,
-          }}
+        <img
+          className="rose-image"
+          src={PALETTE_IMAGES[activePalette]}
+          alt={`${PALETTE_NAMES[activePalette] ?? ''} roses`}
         />
         <div className="theme-divider" aria-hidden="true">✦ ✦ ✦</div>
 
