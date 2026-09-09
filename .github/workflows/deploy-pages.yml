@@ -37,9 +37,6 @@ jobs:
 
       - name: Build
         working-directory: frontend
-        env:
-          VITE_ADMIN_USERNAME: admin
-          VITE_ADMIN_PASSWORD: admin
         run: npm run build:gh-pages
 
       - name: Setup Pages
