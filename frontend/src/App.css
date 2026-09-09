@@ -1151,6 +1151,7 @@
 .empty-state {
   display: flex; align-items: center; justify-content: center;
   height: 200px; color: var(--text-muted); font-size: 0.9rem; font-style: italic;
+  text-align: center; line-height: 1.8;
 }
 
 .article-filter-empty {

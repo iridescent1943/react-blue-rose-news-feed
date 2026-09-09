@@ -93,7 +93,7 @@ export function ThemePanel({ width, activePalette, onPaletteSelect }: Props) {
           <br />
           The blue rose whispers of the{' '}
           <em style={{ color: 'var(--rose-light)', fontStyle: 'italic' }}>unattainable</em> beauty found
-          beyond the edges of the ordinary world.
+          beyond the edges of the ordinary world
         </blockquote>
 
         <div className="theme-palette-group">

@@ -109,7 +109,9 @@ export function ArticleList({
   if (activeCount === 0) {
     listContent = (
       <div className="empty-state article-filter-empty">
-        No active feeds. Add a source or enable a feed in Settings to see articles here.
+        No active feeds.
+        <br />
+        Add a source or enable a feed in Settings to see articles here.
       </div>
     );
   } else if (loading) {
@@ -127,7 +129,9 @@ export function ArticleList({
   } else if (articles.length === 0) {
     listContent = (
       <div className="empty-state article-filter-empty">
-        No articles loaded yet. Add or enable a valid RSS feed in Settings.
+        No articles loaded yet.
+        <br />
+        Add or enable a valid RSS feed in Settings.
       </div>
     );
   } else if (visibleEntries.length === 0) {
