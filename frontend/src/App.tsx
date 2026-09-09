@@ -11,7 +11,7 @@ import { dataStore } from './data';
 import { filterArticlesByKeywords } from './utils/filterArticles';
 import { setArticleState } from './data/api/articles';
 import { listNotesForArticle, createNote, updateNote as apiUpdateNote, deleteNote as apiDeleteNote } from './data/api/notes';
-import type { Article, Note } from './types';
+import type { Note } from './types';
 import './App.css';
 
 const IS_API_MODE = import.meta.env.VITE_DATA_BACKEND === 'api';
@@ -67,7 +67,6 @@ export default function App() {
     : fetchedArticles;
   const articles = IS_API_MODE ? articlesWithOverrides : filterArticlesByKeywords(fetchedArticles, keywords);
   const [selectedArticleKey, setSelectedArticleKey] = useState<string | null>(null);
-  const [selectedTemplateArticle, setSelectedTemplateArticle] = useState<Article | null>(null);
   const [splitRatio, setSplitRatio] = useState<number>(() => {
     const saved = localStorage.getItem('news-layout-split-ratio');
     const parsed = saved ? Number(saved) : NaN;
@@ -118,20 +117,17 @@ export default function App() {
     : readKeys;
 
   const activeCount = feeds.filter((f) => f.active).length;
+
   const selectedArticle = selectedArticleKey
     ? articles.find((a) => getArticleKey(a) === selectedArticleKey) ?? null
     : null;
-  const previewArticle = selectedArticle ?? selectedTemplateArticle;
+  const previewArticle = selectedArticle;
   const previewArticleKey = selectedArticle ? selectedArticleKey : null;
 
   useEffect(() => {
     if (articles.length === 0) {
       setSelectedArticleKey(null);
       return;
-    }
-
-    if (selectedTemplateArticle) {
-      setSelectedTemplateArticle(null);
     }
 
     if (!selectedArticleKey) {
@@ -142,7 +138,7 @@ export default function App() {
     if (!stillExists) {
       setSelectedArticleKey(null);
     }
-  }, [articles, selectedArticleKey, selectedTemplateArticle]);
+  }, [articles, selectedArticleKey]);
 
   useEffect(() => {
     if (IS_API_MODE) return;
@@ -211,7 +207,6 @@ export default function App() {
       : [];
 
   function handleSelectArticleKey(articleKey: string) {
-    setSelectedTemplateArticle(null);
     setSelectedArticleKey(articleKey);
     markArticleAsRead(articleKey);
   }
@@ -448,7 +443,6 @@ export default function App() {
                 activeCount={activeCount}
                 onSelect={handleSelectArticleKey}
                 selectedKey={selectedArticleKey}
-                onSelectTemplate={setSelectedTemplateArticle}
                 bookmarkedKeys={effectiveBookmarkedKeys}
                 readKeys={effectiveReadKeys}
                 onToggleBookmark={toggleBookmark}
@@ -484,22 +478,24 @@ export default function App() {
         </main>
       </div>
 
-      {showGuestToast && (
-        <div className="guest-toast" role="status">
-          <span className="guest-toast-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="9" />
-              <line x1="12" y1="11" x2="12" y2="16" />
-              <circle cx="12" cy="7.8" r="0.9" fill="currentColor" stroke="none" />
-            </svg>
-          </span>
-          <p className="guest-toast-text">
-            You’re currently viewing the last saved version.
-            <br />
-            Log in to edit and save your changes.
-          </p>
-        </div>
-      )}
+      <div className="toast-stack">
+        {showGuestToast && (
+          <div className="notice-toast" role="status">
+            <span className="notice-toast-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <line x1="12" y1="11" x2="12" y2="16" />
+                <circle cx="12" cy="7.8" r="0.9" fill="currentColor" stroke="none" />
+              </svg>
+            </span>
+            <p className="notice-toast-text">
+              You’re currently viewing the last saved version.
+              <br />
+              Log in to edit and save your changes.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
