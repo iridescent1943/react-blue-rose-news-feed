@@ -216,7 +216,8 @@
 .theme-divider {
   font-size: clamp(0.68rem, 1vw, 0.72rem);
   color: var(--rose-mid);
-  letter-spacing: 0.3em;
+  letter-spacing: 0.1em;
+  margin: clamp(-14px, -1.6vw, -10px) 0;
 }
 .theme-lore {
   font-size: clamp(0.8rem, 1.2vw, 0.92rem);

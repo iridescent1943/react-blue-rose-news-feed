@@ -64,20 +64,36 @@ export function ThemePanel({ width, activePalette, onPaletteSelect }: Props) {
           src={PALETTE_IMAGES[activePalette]}
           alt={`${PALETTE_NAMES[activePalette] ?? ''} roses`}
         />
-        <div className="theme-divider" aria-hidden="true">✦ ✦ ✦</div>
 
         <div className="theme-lore">
-          <p>
-            In the language of flowers, the blue rose whispers of the
-            <em> unattainable</em> — beauty found beyond the edges of the ordinary world.
+          <p style={{ fontStyle: 'italic', fontSize: 'clamp(0.76rem, 1.1vw, 0.84rem)', textAlign: 'center' }}>
+            Pierre-Joseph Redouté, Les Roses (1827–1833)
+            <br />
+            Restored by{' '}
+            <a
+              href="https://www.c82.net/redoute/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'inherit' }}
+            >
+              Nicholas Rougeux / C82
+            </a>
+            <br />
+            Original artwork: Public Domain
           </p>
         </div>
 
         <div className="theme-divider" aria-hidden="true">✦ ✦ ✦</div>
 
-        <blockquote className="theme-quote">
-          "A rose by any other name would smell as sweet — but a blue rose
-          carries a dream no other colour dares to hold."
+        <blockquote
+          className="theme-quote"
+          style={{ fontStyle: 'normal', fontSize: 'clamp(0.8rem, 1.2vw, 0.92rem)', textAlign: 'center' }}
+        >
+          In the language of flowers
+          <br />
+          The blue rose whispers of the{' '}
+          <em style={{ color: 'var(--rose-light)', fontStyle: 'italic' }}>unattainable</em> beauty found
+          beyond the edges of the ordinary world.
         </blockquote>
 
         <div className="theme-palette-group">
