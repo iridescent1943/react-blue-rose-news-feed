@@ -18,8 +18,20 @@ class Article < ActiveRecord::Base
   end
 
   def self.matching_keywords(user_id = nil)
-    with_state(user_id)
-      .joins("INNER JOIN keywords k ON search_vector @@ plainto_tsquery('english', k.keyword)")
-      .distinct
+    with_state(user_id).where(<<~SQL)
+      NOT EXISTS (
+        SELECT 1
+        FROM keywords k
+        WHERE k.feed_id IS NULL
+           OR k.feed_id = articles.feed_id
+      )
+      OR EXISTS (
+        SELECT 1
+        FROM keywords k
+        WHERE
+          (k.feed_id IS NULL OR k.feed_id = articles.feed_id)
+          AND search_vector @@ plainto_tsquery('english', k.keyword)
+      )
+    SQL
   end
 end
