@@ -1750,15 +1750,17 @@
   color: #2f6dc2;
 }
 
-.source-toggle-btn {
-  transition: color 0.15s ease;
+.source-toggle-btn,
+.source-toggle-btn:hover {
+  color: #22b14c;
 }
 .source-toggle-btn svg circle {
   transition: cx 0.15s ease;
 }
 
-.source-row.inactive .source-toggle-btn {
-  color: #6f7f95;
+.source-row.inactive .source-toggle-btn,
+.source-row.inactive .source-toggle-btn:hover {
+  color: #aeb9c8;
 }
 
 .source-remove {
@@ -1932,30 +1934,6 @@
   margin-top: 4px;
 }
 
-.app-toast {
-  position: fixed;
-  top: 68px;
-  right: 20px;
-  background: var(--theme-header-border);
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  padding: 10px 20px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  box-shadow: 0 12px 30px rgba(11, 31, 74, 0.18);
-  z-index: 200;
-  animation: app-toast-inout 2.5s ease forwards;
-  pointer-events: none;
-}
-
-@keyframes app-toast-inout {
-  0% { opacity: 0; transform: translateX(10px); }
-  10% { opacity: 1; transform: translateX(0); }
-  85% { opacity: 1; transform: translateX(0); }
-  100% { opacity: 0; transform: translateX(10px); }
-}
-
 .toast-stack {
   position: fixed;
   top: 128px;
@@ -1975,13 +1953,20 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  width: min(90vw, 440px);
+  width: max-content;
+  max-width: min(90vw, 440px);
   padding: 18px 16px;
   border-radius: 16px;
   background: var(--surface);
   border: 1px solid var(--border);
   box-shadow: 0 24px 60px rgba(11, 31, 74, 0.28);
   animation: notice-toast-inout 5s ease forwards;
+}
+
+.notice-toast-compact {
+  width: max-content;
+  padding: 14px 20px;
+  animation-duration: 2.5s;
 }
 
 .notice-toast-icon {

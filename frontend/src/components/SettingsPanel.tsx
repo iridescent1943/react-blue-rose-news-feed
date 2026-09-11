@@ -77,14 +77,7 @@ export function SettingsPanel({
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const [loginForm, setLoginForm] = useState<LoginForm>(EMPTY_LOGIN);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showLogoutToast, setShowLogoutToast] = useState(false);
   const menuWrapRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!showLogoutToast) return;
-    const timer = setTimeout(() => setShowLogoutToast(false), 2500);
-    return () => clearTimeout(timer);
-  }, [showLogoutToast]);
 
   const [prevAuthPromptReason, setPrevAuthPromptReason] = useState(authPromptReason);
   if (authPromptReason !== prevAuthPromptReason) {
@@ -167,7 +160,6 @@ export function SettingsPanel({
     await onLogout();
     setConfirmState(null);
     setLoginForm(EMPTY_LOGIN);
-    setShowLogoutToast(true);
   }
 
   function toggleDraftFeed(id: string) {
@@ -555,11 +547,6 @@ export function SettingsPanel({
         </>
       )}
 
-      {showLogoutToast && (
-        <div className="app-toast" role="status">
-          Logged out successfully
-        </div>
-      )}
     </>
   );
 }

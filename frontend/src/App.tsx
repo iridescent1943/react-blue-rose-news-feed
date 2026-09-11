@@ -92,6 +92,13 @@ export default function App() {
   const { authenticated, login, logout, sessionChecked } = useAdminAuth();
   const [authPrompt, setAuthPrompt] = useState<{ reason: string; action: () => void } | null>(null);
   const [guestToastExpired, setGuestToastExpired] = useState(false);
+  const [showLogoutToast, setShowLogoutToast] = useState(false);
+
+  useEffect(() => {
+    if (!showLogoutToast) return;
+    const timer = setTimeout(() => setShowLogoutToast(false), 2500);
+    return () => clearTimeout(timer);
+  }, [showLogoutToast]);
 
   useEffect(() => {
     if (!IS_API_MODE || !sessionChecked || authenticated || guestToastExpired) return;
@@ -409,7 +416,10 @@ export default function App() {
           onRemoveKeyword={removeKeyword}
           authenticated={!IS_API_MODE || authenticated}
           onLogin={login}
-          onLogout={logout}
+          onLogout={async () => {
+            await logout();
+            setShowLogoutToast(true);
+          }}
           authPromptReason={authPrompt?.reason ?? null}
           onAuthResolved={() => {
             const action = authPrompt?.action;
@@ -493,6 +503,18 @@ export default function App() {
               <br />
               Log in to edit and save your changes.
             </p>
+          </div>
+        )}
+        {showLogoutToast && (
+          <div className="notice-toast notice-toast-compact" role="status">
+            <span className="notice-toast-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <line x1="12" y1="11" x2="12" y2="16" />
+                <circle cx="12" cy="7.8" r="0.9" fill="currentColor" stroke="none" />
+              </svg>
+            </span>
+            <p className="notice-toast-text">Logged out successfully.</p>
           </div>
         )}
       </div>
