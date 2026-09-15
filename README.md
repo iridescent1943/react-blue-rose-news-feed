@@ -2,13 +2,13 @@
 
 A small news‑feed web app I built to learn React, with two live deployments:
 
-**GitHub Pages (static, localStorage)**
-URL: <https://iridescent1943.github.io/react-blue-rose-news-feed/>
+**GitHub Pages (static, localStorage)**  
+URL: <https://iridescent1943.github.io/react-blue-rose-news-feed/>  
 No username/password required.
 
-**CloudFront (database‑backed)**
-URL: <https://dm0gmw0tiq4vu.cloudfront.net>
-Username/password: `bluerose` / `bluerose`
+**CloudFront (database‑backed)**  
+URL: <https://dm0gmw0tiq4vu.cloudfront.net>  
+Username/password: `bluerose` / `bluerose`  
 Valid until: Jan 2027 ~~*(bcs after that I will have to pay lol)*~~
 
 Both deployments are meant for my own use, but if you happen to stop by and would like to give it a try, feedback is surely welcome.
