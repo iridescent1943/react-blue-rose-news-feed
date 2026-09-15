@@ -111,7 +111,7 @@ function parseXmlFeed(feed: Feed, xml: string): Article[] {
 }
 
 async function fetchFeedViaRss2Json(feed: Feed): Promise<Article[]> {
-  const url = `${RSS2JSON_API}?rss_url=${encodeURIComponent(feed.url)}&count=20`;
+  const url = `${RSS2JSON_API}?rss_url=${encodeURIComponent(feed.url)}`;
   const res = await fetch(url);
   let errorMessage = `HTTP ${res.status}`;
 
@@ -173,6 +173,10 @@ async function fetchFeedViaDevProxy(feed: Feed): Promise<Article[]> {
 }
 
 async function fetchFeed(feed: Feed): Promise<Article[]> {
+  if (!import.meta.env.DEV) {
+    return fetchFeedViaRss2Json(feed);
+  }
+
   try {
     return await fetchFeedViaDevProxy(feed);
   } catch (devProxyError) {
