@@ -13,6 +13,13 @@ Valid until: Jan 2027 ~~*(bcs after that I will have to pay lol)*~~
 
 Both deployments are meant for my own use, but if you happen to stop by and would like to give it a try, feedback is surely welcome.
 
+### Project Structure
+
+- 🦋 `frontend/` — React + TypeScript
+- 💎 `backend/` — Ruby API backed by Postgres
+- 🧞‍♂️ `infra/` — AWS CDK for deploying the backend & CloudFront
+- 🐳 `.github/workflows/` — CI/CD deployments
+
 ### Why Blue Rose?
 
 Not a big fan of roses. I just found it interesting that there are no naturally occurring blue roses and that truly blue flowers are rare in nature. It is known that roses lack the gene needed to produce the blue pigment *delphinidin*, and a *true blue* rose doesn’t exist yet even with human intervention.
