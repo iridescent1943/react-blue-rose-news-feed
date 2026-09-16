@@ -798,6 +798,27 @@
   align-self: flex-end;
 }
 
+.ai-summary-popover {
+  width: 320px;
+}
+
+.ai-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.83rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ai-summary-text {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .notes-login-form {
   gap: 8px;
 }

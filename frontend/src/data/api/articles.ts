@@ -48,3 +48,10 @@ export async function setArticleState(
     body: JSON.stringify(patch),
   });
 }
+
+export async function summarizeArticle(articleId: number): Promise<string> {
+  const row = await apiRequest<{ summary: string }>(`/articles/${articleId}/summarize`, {
+    method: 'POST',
+  });
+  return row.summary;
+}

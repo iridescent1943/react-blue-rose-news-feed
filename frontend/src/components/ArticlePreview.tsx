@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Article, Note } from '../types';
+import { summarizeArticle } from '../data/api/articles';
 
 interface Props {
   article: Article | null;
@@ -261,8 +262,65 @@ function NotesPopover({
   );
 }
 
+function AiSummaryPopover({
+  articleId,
+  onClose,
+}: {
+  articleId: number;
+  onClose: () => void;
+}) {
+  const [summary, setSummary] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function onPointerDown(e: MouseEvent) {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    }
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [onClose]);
+
+  function generate() {
+    setLoading(true);
+    setError('');
+    summarizeArticle(articleId)
+      .then((text) => setSummary(text))
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to generate summary'))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    generate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [articleId]);
+
+  return (
+    <div className="notes-popover ai-summary-popover" ref={popoverRef} role="dialog" aria-label="AI summary">
+      <div className="ai-summary-header">
+        <span>AI Summary</span>
+        <button
+          type="button"
+          className="settings-footer-btn"
+          onClick={generate}
+          disabled={loading}
+        >
+          Regenerate
+        </button>
+      </div>
+      {loading && <p className="notes-empty">Generating summary...</p>}
+      {!loading && error && <p className="form-error">{error}</p>}
+      {!loading && !error && summary && <p className="ai-summary-text">{summary}</p>}
+    </div>
+  );
+}
+
 function PreviewActions({
   articleKey,
+  articleId,
   bookmarked,
   isRead,
   onToggleBookmark,
@@ -275,6 +333,7 @@ function PreviewActions({
   onEditNote,
 }: {
   articleKey: string | null;
+  articleId?: number;
   bookmarked: boolean;
   isRead: boolean;
   onToggleBookmark: (articleKey: string) => void;
@@ -288,11 +347,13 @@ function PreviewActions({
 }) {
   const disabled = !articleKey;
   const [notesOpen, setNotesOpen] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const [prevArticleKey, setPrevArticleKey] = useState(articleKey);
 
   if (articleKey !== prevArticleKey) {
     setPrevArticleKey(articleKey);
     setNotesOpen(false);
+    setSummaryOpen(false);
   }
 
   return (
@@ -418,6 +479,41 @@ function PreviewActions({
           />
         )}
       </div>
+      <div className="notes-menu-wrap">
+        <button
+          type="button"
+          className="preview-action-btn tooltip-anchor"
+          aria-pressed={summaryOpen}
+          aria-label="Summarize with AI"
+          data-tooltip={articleId ? 'Summarize' : 'Summarize feature not available'}
+          disabled={disabled || !articleId}
+          onClick={() => setSummaryOpen((prev) => !prev)}
+        >
+          <svg
+            className="preview-action-icon"
+            viewBox="0 0 24 24"
+            width="19"
+            height="19"
+            aria-hidden="true"
+          >
+            <line x1="4.5" y1="19.5" x2="13.5" y2="10.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+            <line x1="5.21" y1="17.51" x2="6.49" y2="18.79" stroke="var(--rose-bg-color, #fff)" strokeWidth="1.1" strokeLinecap="round" />
+            <line x1="6.56" y1="16.16" x2="7.84" y2="17.44" stroke="var(--rose-bg-color, #fff)" strokeWidth="1.1" strokeLinecap="round" />
+            <path
+              d="M18.5 2.8c.25 1.5.75 2.6 1.5 3.35.75.75 1.85 1.25 3.35 1.5-1.5.25-2.6.75-3.35 1.5-.75.75-1.25 1.85-1.5 3.35-.25-1.5-.75-2.6-1.5-3.35-.75-.75-1.85-1.25-3.35-1.5 1.5-.25 2.6-.75 3.35-1.5.75-.75 1.25-1.85 1.5-3.35z"
+              fill="currentColor"
+            />
+            <path
+              d="M7.2 1.9c.12.75.36 1.28.74 1.66.38.38.91.62 1.66.74-.75.12-1.28.36-1.66.74-.38.38-.62.91-.74 1.66-.12-.75-.36-1.28-.74-1.66-.38-.38-.91-.62-1.66-.74.75-.12 1.28-.36 1.66-.74.38-.38.62-.91.74-1.66z"
+              fill="currentColor"
+            />
+            <circle cx="16.5" cy="16.5" r="0.9" fill="currentColor" />
+          </svg>
+        </button>
+        {summaryOpen && articleId && (
+          <AiSummaryPopover articleId={articleId} onClose={() => setSummaryOpen(false)} />
+        )}
+      </div>
     </div>
   );
 }
@@ -539,6 +635,7 @@ export function ArticlePreview({
     <section className="preview-content">
       <PreviewActions
         articleKey={articleKey}
+        articleId={article.id}
         bookmarked={bookmarked}
         isRead={isRead}
         onToggleBookmark={onToggleBookmark}
