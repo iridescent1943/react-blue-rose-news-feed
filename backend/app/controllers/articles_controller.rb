@@ -6,6 +6,21 @@ class ArticlesController < ApplicationController
     json_response(200, articles)
   end
 
+  post '/api/articles/:id/summarize' do
+    article = Article.find_by(article_id: params[:id])
+    halt_error(404, 'Article not found') unless article
+
+    begin
+      result = GeminiSummarizer.summarize(article.content_text)
+    rescue GeminiSummarizer::RateLimitedError
+      halt_error(429, 'AI summarizer is rate limited, please try again shortly')
+    rescue GeminiSummarizer::Error
+      halt_error(502, 'Failed to generate summary')
+    end
+
+    json_response(200, { summary: result.text, model: result.model })
+  end
+
   patch '/api/articles/:id/state' do
     require_admin!
     halt_error(404, 'Article not found') unless Article.exists?(article_id: params[:id])
