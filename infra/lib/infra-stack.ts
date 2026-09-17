@@ -19,6 +19,7 @@ const DB_USERNAME = 'newsfeed';
 const BACKEND_CONTAINER_PORT = 3000;
 const GITHUB_REPO = 'iridescent1943/react-blue-rose-news-feed';
 const GITHUB_DEPLOY_BRANCH = 'main';
+const GEMINI_API_KEY_SECRET_NAME = 'bluerose/gemini-api-key';
 
 export class InfraStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -137,6 +138,12 @@ export class InfraStack extends cdk.Stack {
       },
     });
 
+    const geminiApiKeySecret = secretsmanager.Secret.fromSecretNameV2(
+      this,
+      'GeminiApiKeySecret',
+      GEMINI_API_KEY_SECRET_NAME,
+    );
+
     const backendTaskDefinition = new ecs.FargateTaskDefinition(this, 'BackendTaskDef', {
       cpu: 256,
       memoryLimitMiB: 512,
@@ -159,6 +166,7 @@ export class InfraStack extends cdk.Stack {
         DB_USERNAME: ecs.Secret.fromSecretsManager(database.secret!, 'username'),
         DB_PASSWORD: ecs.Secret.fromSecretsManager(database.secret!, 'password'),
         SESSION_SECRET: ecs.Secret.fromSecretsManager(sessionSecret),
+        GEMINI_API_KEY: ecs.Secret.fromSecretsManager(geminiApiKeySecret),
       },
     });
 
