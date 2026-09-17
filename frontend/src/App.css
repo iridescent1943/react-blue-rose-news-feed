@@ -798,17 +798,75 @@
   align-self: flex-end;
 }
 
-.ai-summary-popover {
-  width: 320px;
+.preview-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.preview-main-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.preview-summary-panel {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(47, 109, 194, 0.07);
 }
 
 .ai-summary-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 0.83rem;
+  gap: 8px;
+}
+
+.ai-summary-title {
+  font-size: 0.76rem;
   font-weight: 700;
+  color: var(--rose-deep, #7b3f6e);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.ai-summary-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.ai-summary-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.ai-summary-icon-btn:hover {
+  background: rgba(90, 143, 209, 0.12);
   color: var(--text);
+}
+
+.ai-summary-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .ai-summary-text {
@@ -817,6 +875,29 @@
   color: var(--text);
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.ai-summary-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.ai-summary-model {
+  font-weight: 700;
+  color: var(--rose-deep, #7b3f6e);
+}
+
+.ai-summary-meta-sep {
+  color: var(--text-muted);
+}
+
+.ai-summary-timestamp {
+  font-size: 0.72rem;
+  color: var(--text-muted);
 }
 
 .notes-login-form {
@@ -835,6 +916,7 @@
 .preview-meta-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -893,26 +975,53 @@
   white-space: pre-line;
 }
 
-.preview-link-btn {
-  display: inline-flex;
-  align-self: flex-start;
+.preview-end-marker {
+  display: flex;
   align-items: center;
-  height: 30px;
-  padding: 0 18px;
-  border-radius: 8px;
-  border: 1px solid var(--theme-header-border, #87b0e0);
-  background: transparent;
-  background-size: 180% 180%;
-  color: var(--settings-toggle-hover-bg, #2f6dc2);
+  justify-content: center;
+  gap: 10px;
+  margin: 10px 0 4px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
   font-weight: 600;
-  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.preview-end-marker::before,
+.preview-end-marker::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  max-width: 64px;
+}
+
+.preview-end-marker::before {
+  background: linear-gradient(to left, rgba(90, 143, 209, 0.45), transparent);
+}
+
+.preview-end-marker::after {
+  background: linear-gradient(to right, rgba(90, 143, 209, 0.45), transparent);
+}
+
+.preview-link-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
   text-decoration: none;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
-.preview-link-btn:hover {
-  background: var(--theme-header-bg);
-  color: var(--rose-pale);
+.preview-link-icon:hover {
+  background: rgba(90, 143, 209, 0.12);
+  color: var(--text);
   text-decoration: none;
 }
 
@@ -1731,6 +1840,20 @@
 .preview-actions-row .tooltip-anchor:hover::after,
 .preview-actions-row .tooltip-anchor:focus-visible::after {
   transform: translateX(-50%) translateY(0);
+}
+
+/* Keep the AI summary header tooltips (regenerate, close) below the buttons since they sit flush at the top of the panel. */
+.ai-summary-header-actions .tooltip-anchor::after {
+  top: calc(100% + 8px);
+  bottom: auto;
+  left: auto;
+  right: 0;
+  transform: translateY(-2px);
+}
+
+.ai-summary-header-actions .tooltip-anchor:hover::after,
+.ai-summary-header-actions .tooltip-anchor:focus-visible::after {
+  transform: translateY(0);
 }
 
 /* Keep the note edit/delete tooltips from being clipped by the popover's right edge. */

@@ -262,59 +262,100 @@ function NotesPopover({
   );
 }
 
-function AiSummaryPopover({
-  articleId,
-  onClose,
-}: {
-  articleId: number;
-  onClose: () => void;
-}) {
-  const [summary, setSummary] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const popoverRef = useRef<HTMLDivElement | null>(null);
+interface ArticleSummaryState {
+  text: string;
+  model: string;
+  generatedAt: string;
+}
 
-  useEffect(() => {
-    function onPointerDown(e: MouseEvent) {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        onClose();
+const SUMMARY_STORAGE_KEY = 'news-article-summaries';
+
+function isArticleSummaryState(value: unknown): value is ArticleSummaryState {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    typeof (value as ArticleSummaryState).text === 'string' &&
+    typeof (value as ArticleSummaryState).model === 'string' &&
+    typeof (value as ArticleSummaryState).generatedAt === 'string'
+  );
+}
+
+function loadCachedSummaries(): Record<number, ArticleSummaryState> {
+  try {
+    const raw = localStorage.getItem(SUMMARY_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const result: Record<number, ArticleSummaryState> = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      const articleId = Number(key);
+      if (Number.isFinite(articleId) && isArticleSummaryState(value)) {
+        result[articleId] = value;
       }
     }
-    document.addEventListener('mousedown', onPointerDown);
-    return () => document.removeEventListener('mousedown', onPointerDown);
-  }, [onClose]);
-
-  function generate() {
-    setLoading(true);
-    setError('');
-    summarizeArticle(articleId)
-      .then((text) => setSummary(text))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to generate summary'))
-      .finally(() => setLoading(false));
+    return result;
+  } catch {
+    return {};
   }
+}
 
-  useEffect(() => {
-    generate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [articleId]);
-
+function AiSummaryPanel({
+  summary,
+  loading,
+  error,
+  onRegenerate,
+  onClose,
+}: {
+  summary?: ArticleSummaryState;
+  loading: boolean;
+  error: string;
+  onRegenerate: () => void;
+  onClose: () => void;
+}) {
   return (
-    <div className="notes-popover ai-summary-popover" ref={popoverRef} role="dialog" aria-label="AI summary">
+    <aside className="preview-summary-panel" aria-label="AI summary">
       <div className="ai-summary-header">
-        <span>AI Summary</span>
-        <button
-          type="button"
-          className="settings-footer-btn"
-          onClick={generate}
-          disabled={loading}
-        >
-          Regenerate
-        </button>
+        <span className="ai-summary-title">Summary</span>
+        <div className="ai-summary-header-actions">
+          <button
+            type="button"
+            className="ai-summary-icon-btn tooltip-anchor"
+            aria-label="Regenerate summary"
+            data-tooltip="Regenerate"
+            onClick={onRegenerate}
+            disabled={loading}
+          >
+            <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
+              <path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <path d="M20 4v5h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="ai-summary-icon-btn tooltip-anchor"
+            aria-label="Close summary"
+            data-tooltip="Close"
+            onClick={onClose}
+          >
+            <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
+              <line x1="4" y1="4" x2="20" y2="20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <line x1="20" y1="4" x2="4" y2="20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
       </div>
       {loading && <p className="notes-empty">Generating summary...</p>}
       {!loading && error && <p className="form-error">{error}</p>}
-      {!loading && !error && summary && <p className="ai-summary-text">{summary}</p>}
-    </div>
+      {!loading && !error && summary && (
+        <>
+          <p className="ai-summary-text">{summary.text}</p>
+          <p className="ai-summary-meta">
+            <span>Summarized by <span className="ai-summary-model">{summary.model}</span></span>
+            <span className="ai-summary-meta-sep" aria-hidden="true">·</span>
+            <span className="ai-summary-timestamp">{formatNoteDate(summary.generatedAt)}</span>
+          </p>
+        </>
+      )}
+    </aside>
   );
 }
 
@@ -331,6 +372,8 @@ function PreviewActions({
   onAddNote,
   onDeleteNote,
   onEditNote,
+  summaryOpen,
+  onToggleSummary,
 }: {
   articleKey: string | null;
   articleId?: number;
@@ -344,16 +387,16 @@ function PreviewActions({
   onAddNote: (articleKey: string, text: string) => void;
   onDeleteNote: (articleKey: string, noteId: string) => void;
   onEditNote: (articleKey: string, noteId: string, text: string) => void;
+  summaryOpen: boolean;
+  onToggleSummary: () => void;
 }) {
   const disabled = !articleKey;
   const [notesOpen, setNotesOpen] = useState(false);
-  const [summaryOpen, setSummaryOpen] = useState(false);
   const [prevArticleKey, setPrevArticleKey] = useState(articleKey);
 
   if (articleKey !== prevArticleKey) {
     setPrevArticleKey(articleKey);
     setNotesOpen(false);
-    setSummaryOpen(false);
   }
 
   return (
@@ -482,12 +525,12 @@ function PreviewActions({
       <div className="notes-menu-wrap">
         <button
           type="button"
-          className="preview-action-btn tooltip-anchor"
+          className={`preview-action-btn tooltip-anchor ${summaryOpen ? 'active' : ''}`}
           aria-pressed={summaryOpen}
           aria-label="Summarize with AI"
           data-tooltip={articleId ? 'Summarize' : 'Summarize feature not available'}
           disabled={disabled || !articleId}
-          onClick={() => setSummaryOpen((prev) => !prev)}
+          onClick={onToggleSummary}
         >
           <svg
             className="preview-action-icon"
@@ -510,9 +553,6 @@ function PreviewActions({
             <circle cx="16.5" cy="16.5" r="0.9" fill="currentColor" />
           </svg>
         </button>
-        {summaryOpen && articleId && (
-          <AiSummaryPopover articleId={articleId} onClose={() => setSummaryOpen(false)} />
-        )}
       </div>
     </div>
   );
@@ -581,6 +621,71 @@ export function ArticlePreview({
   const [imageFailed, setImageFailed] = useState(false);
   const [fullContent, setFullContent] = useState<string>('');
   const [contentLoading, setContentLoading] = useState(false);
+  const [summaries, setSummaries] = useState<Record<number, ArticleSummaryState>>(loadCachedSummaries);
+  const [summaryOpen, setSummaryOpen] = useState(() => {
+    const initialId = article?.id;
+    return initialId !== undefined && !!summaries[initialId];
+  });
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState('');
+  const [prevArticleKey, setPrevArticleKey] = useState(articleKey);
+
+  if (articleKey !== prevArticleKey) {
+    setPrevArticleKey(articleKey);
+    const nextArticleId = article?.id;
+    setSummaryOpen(nextArticleId !== undefined && !!summaries[nextArticleId]);
+  }
+
+  const articleId = article?.id;
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SUMMARY_STORAGE_KEY, JSON.stringify(summaries));
+    } catch {
+      // localStorage may be unavailable (private mode, quota exceeded) - cache is best-effort.
+    }
+  }, [summaries]);
+
+  function regenerateSummary() {
+    if (!articleId) return;
+    setSummaryLoading(true);
+    setSummaryError('');
+    summarizeArticle(articleId)
+      .then((result) => {
+        setSummaries((prev) => ({
+          ...prev,
+          [articleId]: { text: result.text, model: result.model, generatedAt: new Date().toISOString() },
+        }));
+      })
+      .catch((err) => setSummaryError(err instanceof Error ? err.message : 'Failed to generate summary'))
+      .finally(() => setSummaryLoading(false));
+  }
+
+  useEffect(() => {
+    if (!summaryOpen || !articleId) return;
+    setSummaryError('');
+    if (summaries[articleId]) return;
+
+    const controller = new AbortController();
+    setSummaryLoading(true);
+    summarizeArticle(articleId, controller.signal)
+      .then((result) => {
+        setSummaries((prev) => ({
+          ...prev,
+          [articleId]: { text: result.text, model: result.model, generatedAt: new Date().toISOString() },
+        }));
+      })
+      .catch((err) => {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        setSummaryError(err instanceof Error ? err.message : 'Failed to generate summary');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setSummaryLoading(false);
+      });
+
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summaryOpen, articleId]);
 
   useEffect(() => {
     setImageFailed(false);
@@ -646,39 +751,84 @@ export function ArticlePreview({
         onAddNote={onAddNote}
         onDeleteNote={onDeleteNote}
         onEditNote={onEditNote}
+        summaryOpen={summaryOpen}
+        onToggleSummary={() => setSummaryOpen((prev) => !prev)}
       />
-      <h2 className="preview-title">{article.title}</h2>
-      <div className="preview-meta-row">
-        <span className="preview-source">
-          <svg className="preview-source-icon" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true">
-            <circle cx="5" cy="19" r="2" fill="currentColor" />
-            <path d="M4 11a9 9 0 0 1 9 9" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-            <path d="M4 4a16 16 0 0 1 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-          </svg>
-          {article.feedName}
-        </span>
-        {article.pubDate && (
-          <>
-            <span className="preview-meta-sep" aria-hidden="true">·</span>
-            <span className="preview-date">{formatDate(article.pubDate)}</span>
-          </>
-        )}
+      <div className="preview-body">
+        <div className="preview-main-col">
+          <h2 className="preview-title">{article.title}</h2>
+          {summaryOpen && article.id && (
+            <AiSummaryPanel
+              summary={summaries[article.id]}
+              loading={summaryLoading}
+              error={summaryError}
+              onRegenerate={regenerateSummary}
+              onClose={() => setSummaryOpen(false)}
+            />
+          )}
+          <div className="preview-meta-row">
+            <span className="preview-source">
+              <svg className="preview-source-icon" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true">
+                <circle cx="5" cy="19" r="2" fill="currentColor" />
+                <path d="M4 11a9 9 0 0 1 9 9" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                <path d="M4 4a16 16 0 0 1 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+              </svg>
+              {article.feedName}
+            </span>
+            {article.pubDate && (
+              <>
+                <span className="preview-meta-sep" aria-hidden="true">·</span>
+                <span className="preview-date">{formatDate(article.pubDate)}</span>
+              </>
+            )}
+            {article.link && (
+              <a
+                className="preview-link-icon tooltip-anchor"
+                href={article.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Open original article"
+                data-tooltip="Open original article"
+              >
+                <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                  <path
+                    d="M14 4.5h5.5v5.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path d="M19.2 4.8 10 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  <path
+                    d="M17.5 13.5V18a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 18V8A1.5 1.5 0 0 1 6 6.5h4.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </a>
+            )}
+          </div>
+          {article.thumbnail && !imageFailed ? (
+            <img className="preview-image" src={article.thumbnail} alt="" onError={() => setImageFailed(true)} />
+          ) : (
+            <div className="preview-image-placeholder" aria-hidden="true" />
+          )}
+          <p className="preview-desc">
+            {contentLoading
+              ? 'Loading full article content...'
+              : previewContent || 'No content available for this article.'}
+          </p>
+          {!contentLoading && previewContent && (
+            <div className="preview-end-marker" role="presentation">
+              <span>End of article</span>
+            </div>
+          )}
+        </div>
       </div>
-      {article.thumbnail && !imageFailed ? (
-        <img className="preview-image" src={article.thumbnail} alt="" onError={() => setImageFailed(true)} />
-      ) : (
-        <div className="preview-image-placeholder" aria-hidden="true" />
-      )}
-      <p className="preview-desc">
-        {contentLoading
-          ? 'Loading full article content...'
-          : previewContent || 'No content available for this article.'}
-      </p>
-      {article.link && (
-        <a className="preview-link-btn" href={article.link} target="_blank" rel="noopener noreferrer">
-          Open original article
-        </a>
-      )}
     </section>
   );
 }

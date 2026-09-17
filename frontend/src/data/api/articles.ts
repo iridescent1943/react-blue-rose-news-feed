@@ -49,9 +49,15 @@ export async function setArticleState(
   });
 }
 
-export async function summarizeArticle(articleId: number): Promise<string> {
-  const row = await apiRequest<{ summary: string }>(`/articles/${articleId}/summarize`, {
+export interface ArticleSummary {
+  text: string;
+  model: string;
+}
+
+export async function summarizeArticle(articleId: number, signal?: AbortSignal): Promise<ArticleSummary> {
+  const row = await apiRequest<{ summary: string; model: string }>(`/articles/${articleId}/summarize`, {
     method: 'POST',
+    signal,
   });
-  return row.summary;
+  return { text: row.summary, model: row.model };
 }
