@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Article, Note } from '../types';
 import { summarizeArticle } from '../data/api/articles';
+import { summarizeWithGemini } from '../data/geminiClient';
+
+const IS_API_MODE = import.meta.env.VITE_DATA_BACKEND === 'api';
 
 interface Props {
   article: Article | null;
@@ -280,16 +283,15 @@ function isArticleSummaryState(value: unknown): value is ArticleSummaryState {
   );
 }
 
-function loadCachedSummaries(): Record<number, ArticleSummaryState> {
+function loadCachedSummaries(): Record<string, ArticleSummaryState> {
   try {
     const raw = localStorage.getItem(SUMMARY_STORAGE_KEY);
     if (!raw) return {};
     const parsed = JSON.parse(raw) as Record<string, unknown>;
-    const result: Record<number, ArticleSummaryState> = {};
+    const result: Record<string, ArticleSummaryState> = {};
     for (const [key, value] of Object.entries(parsed)) {
-      const articleId = Number(key);
-      if (Number.isFinite(articleId) && isArticleSummaryState(value)) {
-        result[articleId] = value;
+      if (isArticleSummaryState(value)) {
+        result[key] = value;
       }
     }
     return result;
@@ -528,8 +530,8 @@ function PreviewActions({
           className={`preview-action-btn tooltip-anchor ${summaryOpen ? 'active' : ''}`}
           aria-pressed={summaryOpen}
           aria-label="Summarize with AI"
-          data-tooltip={articleId ? 'Summarize' : 'Summarize feature not available'}
-          disabled={disabled || !articleId}
+          data-tooltip={IS_API_MODE && !articleId ? 'Summarize feature not available' : 'Summarize'}
+          disabled={disabled || (IS_API_MODE && !articleId)}
           onClick={onToggleSummary}
         >
           <svg
@@ -621,19 +623,15 @@ export function ArticlePreview({
   const [imageFailed, setImageFailed] = useState(false);
   const [fullContent, setFullContent] = useState<string>('');
   const [contentLoading, setContentLoading] = useState(false);
-  const [summaries, setSummaries] = useState<Record<number, ArticleSummaryState>>(loadCachedSummaries);
-  const [summaryOpen, setSummaryOpen] = useState(() => {
-    const initialId = article?.id;
-    return initialId !== undefined && !!summaries[initialId];
-  });
+  const [summaries, setSummaries] = useState<Record<string, ArticleSummaryState>>(loadCachedSummaries);
+  const [summaryOpen, setSummaryOpen] = useState(() => !!articleKey && !!summaries[articleKey]);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState('');
   const [prevArticleKey, setPrevArticleKey] = useState(articleKey);
 
   if (articleKey !== prevArticleKey) {
     setPrevArticleKey(articleKey);
-    const nextArticleId = article?.id;
-    setSummaryOpen(nextArticleId !== undefined && !!summaries[nextArticleId]);
+    setSummaryOpen(!!articleKey && !!summaries[articleKey]);
   }
 
   const articleId = article?.id;
@@ -646,15 +644,23 @@ export function ArticlePreview({
     }
   }, [summaries]);
 
+  function requestSummary(signal?: AbortSignal) {
+    if (IS_API_MODE) {
+      if (!articleId) return Promise.reject(new Error('Summarize feature not available'));
+      return summarizeArticle(articleId, signal);
+    }
+    return summarizeWithGemini(fullContent || article?.description || '', signal);
+  }
+
   function regenerateSummary() {
-    if (!articleId) return;
+    if (!articleKey) return;
     setSummaryLoading(true);
     setSummaryError('');
-    summarizeArticle(articleId)
+    requestSummary()
       .then((result) => {
         setSummaries((prev) => ({
           ...prev,
-          [articleId]: { text: result.text, model: result.model, generatedAt: new Date().toISOString() },
+          [articleKey]: { text: result.text, model: result.model, generatedAt: new Date().toISOString() },
         }));
       })
       .catch((err) => setSummaryError(err instanceof Error ? err.message : 'Failed to generate summary'))
@@ -662,17 +668,18 @@ export function ArticlePreview({
   }
 
   useEffect(() => {
-    if (!summaryOpen || !articleId) return;
+    if (!summaryOpen || !articleKey) return;
+    if (IS_API_MODE && !articleId) return;
     setSummaryError('');
-    if (summaries[articleId]) return;
+    if (summaries[articleKey]) return;
 
     const controller = new AbortController();
     setSummaryLoading(true);
-    summarizeArticle(articleId, controller.signal)
+    requestSummary(controller.signal)
       .then((result) => {
         setSummaries((prev) => ({
           ...prev,
-          [articleId]: { text: result.text, model: result.model, generatedAt: new Date().toISOString() },
+          [articleKey]: { text: result.text, model: result.model, generatedAt: new Date().toISOString() },
         }));
       })
       .catch((err) => {
@@ -685,7 +692,7 @@ export function ArticlePreview({
 
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [summaryOpen, articleId]);
+  }, [summaryOpen, articleKey, articleId]);
 
   useEffect(() => {
     setImageFailed(false);
@@ -757,9 +764,9 @@ export function ArticlePreview({
       <div className="preview-body">
         <div className="preview-main-col">
           <h2 className="preview-title">{article.title}</h2>
-          {summaryOpen && article.id && (
+          {summaryOpen && articleKey && (
             <AiSummaryPanel
-              summary={summaries[article.id]}
+              summary={summaries[articleKey]}
               loading={summaryLoading}
               error={summaryError}
               onRegenerate={regenerateSummary}
