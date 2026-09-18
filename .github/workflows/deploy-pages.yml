@@ -37,6 +37,8 @@ jobs:
 
       - name: Build
         working-directory: frontend
+        env:
+          VITE_GEMINI_PUBLIC_API_KEY: ${{ secrets.GEMINI_PUBLIC_API_KEY }}
         run: npm run build:gh-pages
 
       - name: Setup Pages
