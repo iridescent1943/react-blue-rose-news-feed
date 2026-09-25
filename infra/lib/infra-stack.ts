@@ -192,7 +192,7 @@ export class InfraStack extends cdk.Stack {
     // Listener - The ALB only ever receives /api/* traffic from CloudFront
     alb.addListener('HttpListener', {
       port: 80,
-      open: true,
+      open: false,
       defaultTargetGroups: [backendTargetGroup],
     });
 
