@@ -14,3 +14,9 @@ gem 'bcrypt', '~> 3.1'
 gem 'nokogiri', '~> 1.19'
 
 gem 'rake', '~> 13.0'
+
+group :test do
+  gem 'rack-test', '~> 2.2'
+  gem 'rspec', '~> 3.13'
+  gem 'webmock', '~> 3.25'
+end

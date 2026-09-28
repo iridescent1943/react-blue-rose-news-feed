@@ -9,3 +9,7 @@ default: &default
 
 development:
   <<: *default
+
+test:
+  <<: *default
+  database: newsfeed_test
