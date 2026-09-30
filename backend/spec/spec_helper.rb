@@ -3,6 +3,10 @@ ENV['SESSION_SECRET'] ||= 'test-session-secret-' + ('x' * 64)
 ENV['ALLOWED_ORIGINS'] = 'http://example.org'
 ENV['GEMINI_API_KEY'] = 'test-gemini-key'
 
+test_db = ENV['TEST_DB_NAME'].to_s
+abort 'TEST_DB_NAME must be set to run the specs' if test_db.empty?
+abort 'TEST_DB_NAME must differ from DB_NAME' if test_db == ENV['DB_NAME']
+
 require_relative '../config/environment'
 require 'rack/test'
 require 'webmock/rspec'

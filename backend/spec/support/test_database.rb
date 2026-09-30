@@ -3,6 +3,11 @@ module TestDatabase
 
   def self.prepare!
     config = ActiveRecord::Base.connection_db_config.configuration_hash
+    expected_db = ENV.fetch('TEST_DB_NAME')
+    unless config[:database] == expected_db
+      abort "Refusing to prepare #{config[:database].inspect}: expected TEST_DB_NAME #{expected_db.inspect}"
+    end
+
     begin
       ActiveRecord::Base.connection.verify!
     rescue ActiveRecord::NoDatabaseError
