@@ -19,7 +19,46 @@ env:
   ECS_SERVICE: InfraStack-BackendService7A4224EE-quYXT75soc9q
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: newsfeed
+          POSTGRES_PASSWORD: newsfeed
+          POSTGRES_DB: newsfeed_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U newsfeed"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DB_USERNAME: newsfeed
+      DB_PASSWORD: newsfeed
+      DB_HOST: localhost
+      DB_PORT: 5432
+      TEST_DB_NAME: newsfeed_test
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          working-directory: backend
+          bundler-cache: true
+
+      - name: Run tests
+        run: bundle exec rspec
+
   deploy:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
