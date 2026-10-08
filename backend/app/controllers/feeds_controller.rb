@@ -13,6 +13,7 @@ class FeedsController < ApplicationController
     require_admin!
     payload = parse_json_body(request)
     halt_error(400, 'feed_url is required') if payload['feed_url'].to_s.empty?
+    halt_error(400, 'title is required') if payload['title'].to_s.strip.empty?
 
     feed = Feed.new(
       feed_url: payload['feed_url'],
@@ -32,7 +33,15 @@ class FeedsController < ApplicationController
     halt_error(404, 'Feed not found') unless feed
 
     payload = parse_json_body(request)
-    if feed.update(status: payload['status'])
+    requested_changes = payload.slice('status', 'title')
+    halt_error(400, 'status or title is required') if requested_changes.empty?
+
+    if requested_changes.key?('title')
+      requested_changes['title'] = requested_changes['title'].to_s.strip
+      halt_error(400, 'title cannot be empty') if requested_changes['title'].empty?
+    end
+
+    if feed.update(requested_changes)
       json_response(200, feed)
     else
       halt_error(422, feed.errors.full_messages.join(', '))

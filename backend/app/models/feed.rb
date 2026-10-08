@@ -7,9 +7,11 @@ class Feed < ActiveRecord::Base
   has_many :keywords, foreign_key: 'feed_id', inverse_of: :feed
 
   before_validation :normalize_feed_url
+  before_validation :normalize_title
 
   validates :feed_url, presence: true
   validates :normalized_feed_url, presence: true, uniqueness: true
+  validates :title, presence: true, uniqueness: { case_sensitive: false }
   validates :source_type, inclusion: { in: %w[rss google_alert] }
   validates :status, inclusion: { in: %w[active paused error] }
 
@@ -18,6 +20,10 @@ class Feed < ActiveRecord::Base
   end
 
   private
+
+  def normalize_title
+    self.title = title.strip if title
+  end
 
   def normalize_feed_url
     return if feed_url.blank?
