@@ -4,7 +4,7 @@ module Factories
   end
 
   def create_feed(feed_url: 'https://example.com/feed.xml', **attrs)
-    Feed.create!({ feed_url: feed_url, last_fetched_at: Time.current }.merge(attrs))
+    Feed.create!({ feed_url: feed_url, title: "Feed #{feed_url}", last_fetched_at: Time.current }.merge(attrs))
   end
 
   def create_article(feed: create_feed, **attrs)

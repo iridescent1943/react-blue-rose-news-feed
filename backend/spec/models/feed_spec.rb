@@ -13,6 +13,21 @@ RSpec.describe Feed do
     expect(dup.errors[:normalized_feed_url]).to include('has already been taken')
   end
 
+  it 'rejects a duplicate title regardless of case and surrounding spaces' do
+    create_feed(title: 'Garden News')
+    dup = Feed.new(feed_url: 'https://example.com/other', title: '  garden news ')
+
+    expect(dup).not_to be_valid
+    expect(dup.errors[:title]).to include('has already been taken')
+  end
+
+  it 'requires a title' do
+    feed = Feed.new(feed_url: 'https://example.com/feed', title: '   ')
+
+    expect(feed).not_to be_valid
+    expect(feed.errors[:title]).to include("can't be blank")
+  end
+
   it 'rejects an invalid source_type and status' do
     feed = Feed.new(feed_url: 'https://example.com/feed', source_type: 'atom', status: 'broken')
 
