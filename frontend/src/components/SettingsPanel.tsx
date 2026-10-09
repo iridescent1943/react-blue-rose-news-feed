@@ -9,6 +9,7 @@ interface Props {
   errors: Record<string, string>;
   onToggle: (id: string) => void;
   onRemove: (id: string) => void;
+  onRename: (id: string, name: string) => void;
   onAdd: (name: string, url: string, kind: FeedKind) => void;
   keywords: Keyword[];
   onAddKeyword: (keyword: string, feedId: string | null) => void;
@@ -47,6 +48,13 @@ const FEED_COLORS = [
   '#5c3d6b', '#a0527a', '#3d1f4f', '#b87ba0',
 ];
 
+const NAME_TAKEN_ERROR = 'A feed with this name already exists';
+
+function isNameTaken(feeds: Feed[], name: string, exceptId?: string): boolean {
+  const target = name.trim().toLowerCase();
+  return feeds.some((f) => f.id !== exceptId && f.name.trim().toLowerCase() === target);
+}
+
 function nextColor(feeds: Feed[]): string {
   const used = new Set(feeds.map((f) => f.color));
   return FEED_COLORS.find((c) => !used.has(c)) ?? FEED_COLORS[feeds.length % FEED_COLORS.length];
@@ -58,6 +66,7 @@ export function SettingsPanel({
   errors,
   onToggle,
   onRemove,
+  onRename,
   onAdd,
   keywords,
   onAddKeyword,
@@ -72,6 +81,8 @@ export function SettingsPanel({
   const [open, setOpen] = useState(false);
   const [draftFeeds, setDraftFeeds] = useState<Feed[]>(feeds);
   const [draftKeywords, setDraftKeywords] = useState<Keyword[]>(keywords);
+  const [nameEdits, setNameEdits] = useState<Record<string, string>>({});
+  const [nameErrors, setNameErrors] = useState<Record<string, string>>({});
   const [addKind, setAddKind] = useState<FeedKind>('rss');
   const [sourceForm, setSourceForm] = useState<AddForm>(EMPTY_FORM);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
@@ -121,6 +132,8 @@ export function SettingsPanel({
     setDraftKeywords(keywords);
     setAddKind('rss');
     setSourceForm(EMPTY_FORM);
+    setNameEdits({});
+    setNameErrors({});
     setConfirmState(null);
     setLoginForm(EMPTY_LOGIN);
     setOpen(true);
@@ -131,6 +144,8 @@ export function SettingsPanel({
     setDraftKeywords(keywords);
     setAddKind('rss');
     setSourceForm(EMPTY_FORM);
+    setNameEdits({});
+    setNameErrors({});
     setConfirmState(null);
     setLoginForm(EMPTY_LOGIN);
     setOpen(false);
@@ -168,6 +183,53 @@ export function SettingsPanel({
 
   function removeDraftFeed(id: string) {
     setDraftFeeds((prev) => prev.filter((feed) => feed.id !== id));
+    setNameEdit(id, null);
+  }
+
+  function setNameEdit(id: string, value: string | null) {
+    setNameEdits((prev) => {
+      const next = { ...prev };
+      if (value === null) {
+        delete next[id];
+      } else {
+        next[id] = value;
+      }
+      return next;
+    });
+    setNameErrors((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }
+
+  function commitNameEdits(ids: string[]): Feed[] | null {
+    let merged = draftFeeds;
+    const errors: Record<string, string> = {};
+
+    ids.forEach((id) => {
+      const trimmed = nameEdits[id]?.trim();
+      if (!trimmed) return;
+      if (isNameTaken(merged, trimmed, id)) {
+        errors[id] = NAME_TAKEN_ERROR;
+        return;
+      }
+      merged = merged.map((feed) => (feed.id === id ? { ...feed, name: trimmed } : feed));
+    });
+
+    if (Object.keys(errors).length > 0) {
+      setNameErrors((prev) => ({ ...prev, ...errors }));
+      return null;
+    }
+
+    setDraftFeeds(merged);
+    setNameEdits((prev) => {
+      const next = { ...prev };
+      ids.forEach((id) => delete next[id]);
+      return next;
+    });
+    return merged;
   }
 
   function removeDraftKeyword(id: string) {
@@ -206,6 +268,11 @@ export function SettingsPanel({
 
     if (!sourceForm.name.trim()) {
       setSourceForm((f) => ({ ...f, error: 'Name is required' }));
+      return;
+    }
+
+    if (isNameTaken(draftFeeds, sourceForm.name)) {
+      setSourceForm((f) => ({ ...f, error: NAME_TAKEN_ERROR }));
       return;
     }
 
@@ -248,9 +315,9 @@ export function SettingsPanel({
     setSourceForm(EMPTY_FORM);
   }
 
-  function applyChanges() {
+  function applyChanges(finalFeeds: Feed[] = draftFeeds) {
     const originalById = new Map(feeds.map((feed) => [feed.id, feed]));
-    const draftById = new Map(draftFeeds.map((feed) => [feed.id, feed]));
+    const draftById = new Map(finalFeeds.map((feed) => [feed.id, feed]));
 
     feeds.forEach((feed) => {
       if (!draftById.has(feed.id)) {
@@ -264,9 +331,12 @@ export function SettingsPanel({
       if (draftFeed.active !== feed.active) {
         onToggle(feed.id);
       }
+      if (draftFeed.name !== feed.name) {
+        onRename(feed.id, draftFeed.name);
+      }
     });
 
-    draftFeeds.forEach((feed) => {
+    finalFeeds.forEach((feed) => {
       if (!originalById.has(feed.id)) {
         onAdd(feed.name, feed.url, feed.kind);
       }
@@ -291,7 +361,10 @@ export function SettingsPanel({
   }
 
   function handleApply() {
-    const draftById = new Map(draftFeeds.map((feed) => [feed.id, feed]));
+    const finalFeeds = commitNameEdits(Object.keys(nameEdits));
+    if (!finalFeeds) return;
+
+    const draftById = new Map(finalFeeds.map((feed) => [feed.id, feed]));
 
     const removedCount = feeds.filter((feed) => !draftById.has(feed.id)).length;
     const disabledCount = feeds.filter((feed) => {
@@ -304,7 +377,7 @@ export function SettingsPanel({
       return;
     }
 
-    applyChanges();
+    applyChanges(finalFeeds);
   }
 
   const showMenu = IS_API_MODE && authenticated;
@@ -397,6 +470,10 @@ export function SettingsPanel({
                     keywords={draftKeywords.filter((k) => k.feedId === feed.id || k.feedId === null)}
                     onToggle={toggleDraftFeed}
                     onRemove={removeDraftFeed}
+                    nameDraft={nameEdits[feed.id] ?? null}
+                    nameError={nameErrors[feed.id]}
+                    onNameDraftChange={setNameEdit}
+                    onCommitName={(id) => commitNameEdits([id])}
                     onRemoveKeyword={removeKeywordFromFeed}
                     onAddKeyword={addDraftKeyword}
                   />
@@ -598,15 +675,27 @@ function KeywordChip({ keyword, onRemove }: {
   );
 }
 
-function FeedRow({ feed, error, keywords, onToggle, onRemove, onRemoveKeyword, onAddKeyword }: {
+function FeedRow({
+  feed, error, keywords, nameDraft, nameError,
+  onToggle, onRemove, onNameDraftChange, onCommitName, onRemoveKeyword, onAddKeyword,
+}: {
   feed: Feed;
   error?: string;
   keywords: Keyword[];
   onToggle: (id: string) => void;
   onRemove: (id: string) => void;
+  nameDraft: string | null;
+  nameError?: string;
+  onNameDraftChange: (id: string, name: string | null) => void;
+  onCommitName: (id: string) => void;
   onRemoveKeyword: (keywordId: string, feedId: string) => void;
   onAddKeyword: (keyword: string, feedId: string | null) => void;
 }) {
+  function commitName(e: React.FormEvent) {
+    e.preventDefault();
+    onCommitName(feed.id);
+  }
+
   return (
     <li className={`source-row ${feed.active ? '' : 'inactive'}`}>
       <div className="source-row-main-line">
@@ -618,7 +707,53 @@ function FeedRow({ feed, error, keywords, onToggle, onRemove, onRemoveKeyword, o
           >
             {feed.kind === 'rss' ? 'RSS' : 'G'}
           </span>
-          <span className="source-name">{feed.name}</span>
+          {nameDraft === null ? (
+            <>
+              <span className="source-name">{feed.name}</span>
+              <button
+                type="button"
+                className="note-item-edit source-rename-btn tooltip-anchor"
+                onClick={() => onNameDraftChange(feed.id, feed.name)}
+                data-tooltip="Edit"
+                aria-label={`Rename ${feed.name}`}
+              >
+                <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true">
+                  <path
+                    d="M4 20h4l10.5-10.5a1.5 1.5 0 0 0 0-2.12l-1.88-1.88a1.5 1.5 0 0 0-2.12 0L4 16v4z"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <line x1="13.5" y1="6.5" x2="17.5" y2="10.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              </button>
+            </>
+          ) : (
+            <form className="source-name-form" onSubmit={commitName}>
+              <input
+                type="text"
+                className="source-name-input"
+                aria-label="Feed name"
+                value={nameDraft}
+                autoFocus
+                onFocus={(e) => e.target.select()}
+                aria-invalid={nameError ? true : undefined}
+                onChange={(e) => onNameDraftChange(feed.id, e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    onNameDraftChange(feed.id, null);
+                  }
+                }}
+              />
+              {nameDraft.trim() && (
+                <button type="submit" className="keyword-add-confirm" aria-label="Save feed name">
+                  ✓
+                </button>
+              )}
+            </form>
+          )}
         </div>
         {error && (
           <span className="source-error tooltip-anchor" data-tooltip={error}>
@@ -652,6 +787,7 @@ function FeedRow({ feed, error, keywords, onToggle, onRemove, onRemoveKeyword, o
           </button>
         </div>
       </div>
+      {nameError && <p className="form-error source-name-error">{nameError}</p>}
       <div className="keyword-chip-row">
         {keywords.map((kw) => (
           <KeywordChip key={kw.id} keyword={kw} onRemove={(id) => onRemoveKeyword(id, feed.id)} />

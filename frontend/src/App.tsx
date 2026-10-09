@@ -58,7 +58,7 @@ function getInitialLeftPanelWidth(): number {
 }
 
 export default function App() {
-  const { feeds, addFeed, removeFeed, toggleFeed, loaded: feedsLoaded } = useFeeds();
+  const { feeds, addFeed, removeFeed, toggleFeed, renameFeed, loaded: feedsLoaded } = useFeeds();
   const { keywords, addKeyword, removeKeyword, loaded: keywordsLoaded } = useKeywords();
   const { articles: fetchedArticles, loading, errors } = useArticles(feeds);
   const [articleStateOverrides, setArticleStateOverrides] = useState<Record<number, { isRead?: boolean; isSaved?: boolean }>>({});
@@ -410,6 +410,7 @@ export default function App() {
           errors={errors}
           onToggle={toggleFeed}
           onRemove={removeFeed}
+          onRename={renameFeed}
           onAdd={addFeed}
           keywords={keywords}
           onAddKeyword={addKeyword}

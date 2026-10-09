@@ -1,7 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Feed, FeedKind } from '../types';
 import { dataStore } from '../data';
-import { listFeeds, createFeed, removeFeed as apiRemoveFeed, setFeedActive } from '../data/api/feeds';
+import {
+  listFeeds,
+  createFeed,
+  removeFeed as apiRemoveFeed,
+  renameFeed as apiRenameFeed,
+  setFeedActive,
+} from '../data/api/feeds';
 
 const IS_API_MODE = import.meta.env.VITE_DATA_BACKEND === 'api';
 const STORAGE_KEY = 'news-feeds';
@@ -151,7 +157,7 @@ export function useFeeds() {
       const current = feeds.find((f) => f.id === id);
       if (!current) return;
       setFeedActive(id, !current.active).then((updated) => {
-        setFeeds((prev) => prev.map((f) => (f.id === id ? updated : f)));
+        setFeeds((prev) => prev.map((f) => (f.id === id ? { ...f, active: updated.active } : f)));
       });
       return;
     }
@@ -160,5 +166,18 @@ export function useFeeds() {
     );
   }, [feeds]);
 
-  return { feeds, addFeed, removeFeed, toggleFeed, loaded };
+  const renameFeed = useCallback((id: string, name: string) => {
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
+
+    if (IS_API_MODE) {
+      apiRenameFeed(id, trimmedName).then((updated) => {
+        setFeeds((prev) => prev.map((f) => (f.id === id ? { ...f, name: updated.name } : f)));
+      });
+      return;
+    }
+    setFeeds((prev) => prev.map((f) => (f.id === id ? { ...f, name: trimmedName } : f)));
+  }, []);
+
+  return { feeds, addFeed, removeFeed, toggleFeed, renameFeed, loaded };
 }

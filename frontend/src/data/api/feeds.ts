@@ -46,6 +46,14 @@ export async function removeFeed(id: string): Promise<void> {
   await apiRequest<void>(`/feeds/${id}`, { method: 'DELETE' });
 }
 
+export async function renameFeed(id: string, name: string): Promise<Feed> {
+  const row = await apiRequest<FeedRow>(`/feeds/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ title: name }),
+  });
+  return mapFeed(row);
+}
+
 export async function setFeedActive(id: string, active: boolean): Promise<Feed> {
   const row = await apiRequest<FeedRow>(`/feeds/${id}`, {
     method: 'PATCH',

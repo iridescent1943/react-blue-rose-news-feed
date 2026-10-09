@@ -1741,6 +1741,28 @@
   color: #869ab6;
   font-weight: 500;
 }
+.source-rename-btn { flex-shrink: 0; }
+.source-name-form {
+  position: relative;
+  flex: 1;
+  display: flex;
+  min-width: 0;
+}
+.source-name-input {
+  flex: 1;
+  min-width: 0;
+  padding: 1px 22px 1px 6px;
+  border: 1px solid var(--rose-mid);
+  border-radius: 6px;
+  font-size: 0.83rem;
+  font-weight: 600;
+  font-family: inherit;
+  background: #fff;
+  color: #234f88;
+  outline: none;
+}
+.source-name-input[aria-invalid='true'] { border-color: #c0392b; }
+.source-name-error { margin: 2px 0 0; }
 .source-error { color: #c49a17; font-size: 0.85rem; }
 
 .tooltip-anchor {
