@@ -8,7 +8,7 @@ gem 'rack-cors', '~> 3.0', require: 'rack/cors'
 gem 'rack-session', '~> 2.1', require: 'rack/session'
 
 gem 'activerecord', '~> 8.1', require: 'active_record'
-gem 'pg', '~> 1.6'
+gem 'pg', '~> 1.7'
 
 gem 'bcrypt', '~> 3.1'
 gem 'nokogiri', '~> 1.19'
@@ -16,7 +16,7 @@ gem 'nokogiri', '~> 1.19'
 gem 'rake', '~> 13.0'
 
 group :test do
-  gem 'rack-test', '~> 2.2'
+  gem 'rack-test', '~> 2.3'
   gem 'rspec', '~> 3.13'
-  gem 'webmock', '~> 3.25'
+  gem 'webmock', '~> 3.34'
 end
